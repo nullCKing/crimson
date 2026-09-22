@@ -34,7 +34,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +66,10 @@ fun CrimsonTextField(
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
+    // Held as a TextFieldValue so the caret position is known: Left and Right leave the field
+    // only from its edges, and move the caret everywhere else.
+    var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    if (field.text != value) field = TextFieldValue(value, TextRange(value.length))
     val shape = RoundedCornerShape(6.dp)
 
     Column(modifier.fillMaxWidth()) {
@@ -78,8 +84,8 @@ fun CrimsonTextField(
                 .padding(horizontal = 14.dp, vertical = 11.dp),
         ) {
             BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
+                value = field,
+                onValueChange = { field = it; if (it.text != value) onValueChange(it.text) },
                 singleLine = true,
                 textStyle = CrimsonType.BodyStrong.copy(fontSize = 15.sp),
                 cursorBrush = SolidColor(Crimson.Red),
@@ -95,6 +101,10 @@ fun CrimsonTextField(
                         when (event.key) {
                             Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
                             Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
+                            Key.DirectionRight ->
+                                if (field.selection.end >= field.text.length) focusManager.moveFocus(FocusDirection.Right) else false
+                            Key.DirectionLeft ->
+                                if (field.selection.start <= 0) focusManager.moveFocus(FocusDirection.Left) else false
                             Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                                 if (imeAction == ImeAction.Done) onDone() else keyboard?.show()
                                 true

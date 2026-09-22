@@ -103,10 +103,7 @@ fun LiveScreen(
     val list = rememberLazyListState()
     var focusedRow by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { chipFocus.requestFocus() }
-    }
+    com.crimson.ui.components.InitialFocus(chipFocus)
     LaunchedEffect(list, state.rows.size) {
         androidx.compose.runtime.snapshotFlow { list.layoutInfo.visibleItemsInfo.map { it.key } }
             .distinctUntilChanged()
@@ -249,8 +246,8 @@ private fun LiveHero(state: LiveState, nowMs: Long, preview: @Composable (Modifi
                 .border(1.dp, if (state.previewing) Crimson.Red.copy(alpha = 0.7f) else Crimson.Stroke, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            if (ch != null && !ch.logo.isNullOrBlank()) {
-                AsyncImage(ch.logo, null, contentScale = ContentScale.Fit, modifier = Modifier.size(120.dp, 70.dp), alpha = 0.8f)
+            if (ch != null) {
+                com.crimson.ui.components.ChannelLogo(ch.logo, ch.name, Modifier.size(160.dp, 70.dp), textSize = 22.sp)
             }
             if (state.previewing) preview(Modifier.fillMaxSize())
             if (ch != null && !state.previewing) {

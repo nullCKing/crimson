@@ -171,7 +171,7 @@ private fun InfoPanel(
                         Modifier.size(54.dp, 34.dp).clip(RoundedCornerShape(6.dp)).background(Color.White.copy(alpha = 0.08f)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        AsyncImage(channel?.logoUrl, channel?.name, contentScale = ContentScale.Fit, modifier = Modifier.padding(4.dp).fillMaxSize())
+                        com.crimson.ui.components.ChannelLogo(channel?.logoUrl, channel?.shortName.orEmpty(), Modifier.padding(4.dp).fillMaxSize(), textSize = 10.sp)
                     }
                     Spacer(Modifier.width(12.dp))
                 }

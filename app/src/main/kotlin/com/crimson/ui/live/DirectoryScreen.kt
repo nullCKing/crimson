@@ -68,10 +68,7 @@ class DirectoryActions(
 @Composable
 fun DirectoryScreen(state: DirectoryState, nowMs: Long, actions: DirectoryActions) {
     val firstRegion = remember { FocusRequester() }
-    LaunchedEffect(state.regions.isNotEmpty()) {
-        withFrameNanos { }
-        runCatching { firstRegion.requestFocus() }
-    }
+    com.crimson.ui.components.InitialFocus(firstRegion, key = state.regions.isNotEmpty())
     PageBackground {
         Column(Modifier.fillMaxSize().padding(start = Crimson.ScreenPadding, top = 26.dp, end = 24.dp)) {
             PageHeader(

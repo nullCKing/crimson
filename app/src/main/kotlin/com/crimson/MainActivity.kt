@@ -116,7 +116,9 @@ private fun CrimsonRoot(onExit: () -> Unit) {
             .fillMaxSize()
             .background(Crimson.Background)
             .focusRequester(rootFocus)
-            .focusable()
+            // Focusable only where it handles the keys itself; elsewhere a page's own controls
+            // hold focus, and a focusable root would catch it whenever a page lets go.
+            .focusable(enabled = ui.route == Route.Watching || ui.route == Route.Guide)
             .onPreviewKeyEvent { handleKey(it, ui.route, vm) }
             .onKeyEvent { event ->
                 // Back bubbles: a page that wants it first (Home returning to its top) consumes it
@@ -132,7 +134,7 @@ private fun CrimsonRoot(onExit: () -> Unit) {
         val avatar = ui.profile?.avatar ?: 0
         AnimatedContent(
             targetState = ui.route,
-            transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+            transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(90)) },
             contentKey = { route -> if (route is Route.Main) "main:${route.tab}" else route.toString() },
             label = "route",
         ) { route ->

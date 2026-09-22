@@ -59,6 +59,18 @@ class SportsTest {
     }
 
     @Test
+    fun `a team streaming feed falls back to the home team`() {
+        val event = EspnScoreboard.parse(sample.reader(), Leagues.NFL)[0].copy(networks = listOf("MLB.TV", "Brewers.TV"))
+        assertEquals("Chiefs", BroadcastSearch.termFor(event))
+    }
+
+    @Test
+    fun `search falls through networks to teams`() {
+        val event = EspnScoreboard.parse(sample.reader(), Leagues.NFL)[0]
+        assertEquals(listOf("NBC", "Peacock", "Chiefs", "Browns"), BroadcastSearch.termsFor(event))
+    }
+
+    @Test
     fun `espn times without seconds parse`() {
         assertNotNull(EspnScoreboard.parseTime("2026-09-18T00:15Z"))
     }

@@ -37,9 +37,11 @@ fun MyListScreen(
     onProfile: () -> Unit,
     onOpen: (Tile, List<Tile>) -> Unit,
 ) {
+    val tabFocus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    com.crimson.ui.components.InitialFocus(tabFocus)
     PageBackground {
         Column(Modifier.fillMaxSize()) {
-            TopNav(MainTab.MY_LIST, avatar, onTab, onSearch, onProfile)
+            TopNav(MainTab.MY_LIST, avatar, onTab, onSearch, onProfile, selectedTabRequester = tabFocus)
             PageHeader(
                 "My List",
                 "$profileName's saved movies and shows, what you're watching, and your channels.",

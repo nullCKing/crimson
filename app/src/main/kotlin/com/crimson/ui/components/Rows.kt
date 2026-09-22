@@ -47,7 +47,9 @@ fun FeedRowView(
                 modifier = Modifier.padding(start = startPadding, bottom = 2.dp),
             )
         }
-        PivotScroll(offset = startPadding) {
+        // A Top 10 card's rank sits to the left of its poster, and the poster is what takes
+        // focus, so those rows pin further right to keep the numeral on screen.
+        PivotScroll(offset = if (row.kind == RowKind.TOP10) startPadding + 64.dp else startPadding) {
             LazyRow(
                 state = state,
                 contentPadding = PaddingValues(start = startPadding, end = 320.dp, top = 10.dp, bottom = 12.dp),

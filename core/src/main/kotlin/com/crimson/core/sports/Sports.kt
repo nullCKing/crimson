@@ -383,12 +383,41 @@ object BroadcastSearch {
     private val STREAMING = setOf("ESPN+", "PEACOCK", "PARAMOUNT+", "PRIME VIDEO", "APPLE TV", "APPLE TV+", "MLS SEASON PASS", "NFL+", "DAZN")
 
     fun termFor(event: SportsEvent): String {
-        val preferred = event.networks.firstOrNull { it.uppercase() !in STREAMING } ?: event.networks.firstOrNull()
-        if (preferred != null) return normalise(preferred)
-        return event.home?.shortName?.takeIf { it.isNotBlank() }
-            ?: event.home?.name?.takeIf { it.isNotBlank() }
-            ?: event.shortName
+        // A channel first; failing that, the home team, which is what providers name event
+        // channels after. A streaming-only listing ("MLB.TV", "Brewers.TV", "ESPN+") is used only
+        // when it is all there is and a provider plausibly carries it as a channel.
+        val channel = event.networks.firstOrNull { !isStreaming(it) }
+        if (channel != null) return normalise(channel)
+        val team = event.home?.shortName?.takeIf { it.isNotBlank() } ?: event.home?.name?.takeIf { it.isNotBlank() }
+        val carried = event.networks.firstOrNull { it.uppercase() in CARRIED_STREAMING }
+        if (carried != null) return normalise(carried)
+        if (team != null) return team
+        event.networks.firstOrNull()?.let { return normalise(it) }
+        return event.shortName
     }
+
+    /**
+     * Every search worth trying for a game, best first: its channels, then the streaming services
+     * providers re-broadcast, then the teams. The search page falls through them until one finds
+     * a channel, since a regional network one provider carries may be absent from another.
+     */
+    fun termsFor(event: SportsEvent): List<String> {
+        val out = LinkedHashSet<String>()
+        out += termFor(event)
+        event.networks.filterNot(::isStreaming).forEach { out += normalise(it) }
+        event.networks.filter { it.uppercase() in CARRIED_STREAMING }.forEach { out += normalise(it) }
+        listOfNotNull(event.home?.shortName, event.away?.shortName).filter { it.isNotBlank() }.forEach { out += it }
+        return out.toList()
+    }
+
+    /** A streaming service or a team's own streaming feed, rather than a TV channel. */
+    fun isStreaming(network: String): Boolean {
+        val n = network.trim().uppercase()
+        return n in STREAMING || n.endsWith(".TV") || n.endsWith("+") || n.contains("LEAGUE PASS")
+    }
+
+    /** Streaming services that providers commonly re-broadcast as numbered event channels. */
+    private val CARRIED_STREAMING = setOf("ESPN+", "PEACOCK", "PRIME VIDEO", "PARAMOUNT+", "DAZN", "APPLE TV", "APPLE TV+")
 
     fun normalise(network: String): String =
         ALIASES[network.trim().uppercase()] ?: network.trim()

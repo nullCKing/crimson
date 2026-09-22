@@ -234,27 +234,15 @@ fun LiveCard(
                 )
             ),
     ) {
-        if (!tile.logo.isNullOrBlank()) {
-            AsyncImage(
-                model = tile.logo,
-                contentDescription = tile.name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 14.dp)
-                    .fillMaxWidth(0.52f)
-                    .height(width * 0.22f),
-            )
-        } else {
-            Text(
-                tile.name,
-                style = CrimsonType.Title.copy(fontSize = 17.sp, fontWeight = FontWeight.Black),
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp, start = 10.dp, end = 10.dp),
-            )
-        }
+        ChannelLogo(
+            url = tile.logo,
+            name = tile.name,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 14.dp, start = 10.dp, end = 10.dp)
+                .fillMaxWidth(0.7f)
+                .height(width * 0.22f),
+        )
         if (tile.number > 0) {
             Text(
                 tile.number.toString(),
@@ -269,16 +257,23 @@ fun LiveCard(
             )
         }
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)) {
-            Text(
-                tile.nowTitle ?: tile.name,
-                style = CrimsonType.Label.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(5.dp))
-            val progress = tile.progress(nowMs)
-            if (progress > 0f) ProgressLine(progress, height = 2.dp)
-            else Text(if (tile.nowTitle == null) (tile.category ?: " ") else " ", style = CrimsonType.Caption.copy(fontSize = 9.sp), maxLines = 1)
+            if (tile.nowTitle != null) {
+                Text(
+                    tile.nowTitle,
+                    style = CrimsonType.Label.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(5.dp))
+                ProgressLine(tile.progress(nowMs), height = 2.dp)
+            } else {
+                Text(
+                    tile.category?.let { com.crimson.core.catalog.CategoryTitles.clean(it) } ?: "Live channel",
+                    style = CrimsonType.Caption.copy(fontSize = 10.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -453,13 +448,48 @@ fun TileCard(
     rank: Int? = null,
     onFocus: (Boolean) -> Unit = {},
     focusRequester: FocusRequester? = null,
+    /** Overrides the card's natural width, for grids that size their cells. */
+    width: Dp? = null,
 ) {
     when (tile) {
         is TitleTile ->
             if (rank != null) Top10Card(rank, tile, onClick, modifier, onFocus, focusRequester)
-            else PosterCard(tile, onClick, modifier, onFocus = onFocus, focusRequester = focusRequester)
+            else PosterCard(tile, onClick, modifier, width = width ?: CardSize.PosterWidth, onFocus = onFocus, focusRequester = focusRequester)
         is ContinueTile -> ContinueCard(tile, onClick, modifier, onFocus, focusRequester)
-        is ChannelTile -> LiveCard(tile, nowMs, onClick, modifier, onFocus = onFocus, focusRequester = focusRequester)
+        is ChannelTile -> LiveCard(tile, nowMs, onClick, modifier, width = width ?: CardSize.LiveWidth, onFocus = onFocus, focusRequester = focusRequester)
         is GameTile -> GameCard(tile, onClick, modifier, onFocus, focusRequester)
+    }
+}
+
+/**
+ * A channel's logo, or its name set in type when there is no logo or it fails to load — which,
+ * on a provider's list, is often. A blank tile is the one thing a channel card must never be.
+ */
+@Composable
+fun ChannelLogo(
+    url: String?,
+    name: String,
+    modifier: Modifier = Modifier,
+    textSize: androidx.compose.ui.unit.TextUnit = 17.sp,
+) {
+    var failed by remember(url) { mutableStateOf(url.isNullOrBlank()) }
+    Box(modifier, contentAlignment = Alignment.Center) {
+        if (failed) {
+            Text(
+                name,
+                style = CrimsonType.Title.copy(fontSize = textSize, fontWeight = FontWeight.Black, lineHeight = textSize * 1.1f),
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        } else {
+            AsyncImage(
+                model = url,
+                contentDescription = name,
+                contentScale = ContentScale.Fit,
+                onError = { failed = true },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }

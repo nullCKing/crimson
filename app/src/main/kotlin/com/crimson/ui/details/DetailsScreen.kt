@@ -41,6 +41,7 @@ import com.crimson.ui.components.FeedRow
 import com.crimson.ui.components.FeedRowView
 import com.crimson.ui.components.MetaLine
 import com.crimson.ui.components.PivotScroll
+import com.crimson.ui.components.RevealScroll
 import com.crimson.ui.components.ProgressLine
 import com.crimson.ui.components.RowHeading
 import com.crimson.ui.components.RowKind
@@ -64,17 +65,14 @@ class DetailsActions(
 @Composable
 fun DetailsScreen(state: DetailsState, nowMs: Long, actions: DetailsActions) {
     val play = remember { FocusRequester() }
-    LaunchedEffect(state.id, state.loading) {
-        withFrameNanos { }
-        runCatching { play.requestFocus() }
-    }
+    com.crimson.ui.components.InitialFocus(play, key = state.id to state.loading)
     val list = rememberLazyListState()
 
     Box(Modifier.fillMaxSize().background(Crimson.Background)) {
         Backdrop(url = state.backdrop, fallback = state.poster, widthFraction = 0.74f, heightFraction = 0.9f)
         // No pivot here: the Play button sits low in a tall header, and pinning it to the top
-        // would scroll the title away. The lists reveal the minimum, as a document page does.
-        run {
+        // would scroll the title away. The page reveals the minimum, as a document does.
+        RevealScroll {
             LazyColumn(
                 state = list,
                 contentPadding = PaddingValues(bottom = 200.dp),

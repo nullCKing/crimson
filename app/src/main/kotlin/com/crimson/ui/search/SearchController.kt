@@ -26,6 +26,8 @@ data class SearchState(
     val channels: List<ChannelTile> = emptyList(),
     val movies: List<TitleTile> = emptyList(),
     val shows: List<TitleTile> = emptyList(),
+    /** Said when the search moved on from what was asked for, e.g. to a team's name. */
+    val note: String? = null,
 ) {
     val hasQuery: Boolean get() = query.isNotBlank()
     val isEmpty: Boolean get() = channels.isEmpty() && movies.isEmpty() && shows.isEmpty()
@@ -54,8 +56,13 @@ class SearchController(
         _state.value = SearchState()
     }
 
-    fun open(query: String, scope: SearchScope) {
-        _state.value = _state.value.copy(scope = scope)
+    private var fallbacks: List<String> = emptyList()
+    private var original: String? = null
+
+    fun open(query: String, scope: SearchScope, fallbacks: List<String> = emptyList()) {
+        this.fallbacks = fallbacks
+        original = query.takeIf { fallbacks.isNotEmpty() }
+        _state.value = _state.value.copy(scope = scope, note = null)
         setQuery(query, debounce = false)
     }
 
@@ -71,7 +78,9 @@ class SearchController(
 
     fun setQuery(query: String, debounce: Boolean = true) {
         val trimmed = query.take(40)
-        _state.value = _state.value.copy(query = trimmed)
+        // Typing takes over from a search the app started; no more falling through.
+        if (debounce) { fallbacks = emptyList(); original = null }
+        _state.value = _state.value.copy(query = trimmed, note = if (debounce) null else _state.value.note)
         job?.cancel()
         val term = trimmed.trim()
         if (term.isEmpty()) {
@@ -115,6 +124,13 @@ class SearchController(
                 bonus = { s -> ((s.imdbVotes ?: 0) / 10_000).coerceAtMost(300) - (if (s.isForeign) 200 else 0) },
             ).take(60).map(Mappers::tile)
             val channelTiles = nowPlaying(channels)
+            if (channelTiles.isEmpty() && fallbacks.isNotEmpty() && _state.value.query.trim() == term) {
+                val next = fallbacks.first()
+                fallbacks = fallbacks.drop(1)
+                _state.value = _state.value.copy(note = "No channel matched “${original ?: term}”, so here is “$next”.")
+                setQuery(next, debounce = false)
+                return@launch
+            }
             if (_state.value.query.trim() == term) {
                 _state.value = _state.value.copy(
                     searching = false,

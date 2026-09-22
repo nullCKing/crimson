@@ -70,14 +70,15 @@ fun SearchScreen(
     val firstKey = remember { FocusRequester() }
     val firstResult = remember { FocusRequester() }
     val arrivedWithQuery = remember { state.query.isNotBlank() && state.scope == SearchScope.LIVE }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { firstKey.requestFocus() }
-    }
-    LaunchedEffect(arrivedWithQuery, state.channels.isNotEmpty()) {
-        if (arrivedWithQuery && state.channels.isNotEmpty()) {
+    if (!arrivedWithQuery) com.crimson.ui.components.InitialFocus(firstKey)
+    // Arriving from a game, the channel showing it is what the viewer came for.
+    if (arrivedWithQuery) {
+        LaunchedEffect(state.channels.isNotEmpty()) {
             withFrameNanos { }
-            runCatching { firstResult.requestFocus() }
+            val target = if (state.channels.isNotEmpty()) firstResult else firstKey
+            runCatching { target.requestFocus() }
+            kotlinx.coroutines.delay(320)
+            runCatching { target.requestFocus() }
         }
     }
 
@@ -127,6 +128,13 @@ fun SearchScreen(
                     }
                     if (state.searching) Spinner(size = 22.dp, stroke = 2.5.dp)
                 }
+                if (!state.note.isNullOrBlank()) {
+                    Text(
+                        state.note,
+                        style = CrimsonType.Caption.copy(color = Crimson.TextSecondary),
+                        modifier = Modifier.padding(start = 24.dp, top = 8.dp),
+                    )
+                }
                 Spacer(Modifier.height(6.dp))
                 Results(state, nowMs, suggestions, firstResult, actions)
             }
@@ -155,16 +163,52 @@ private fun Results(
 ) {
     val rows: List<FeedRow> = if (!state.hasQuery) {
         suggestions
-    } else {
-        val live = FeedRow("s_live", "Live Channels", RowKind.LIVE, state.channels)
-        val movies = FeedRow("s_movies", "Movies", RowKind.POSTER, state.movies)
-        val shows = FeedRow("s_shows", "TV Shows", RowKind.POSTER, state.shows)
-        when (state.scope) {
-            SearchScope.ALL -> listOf(live, movies, shows)
-            SearchScope.LIVE -> state.channels.chunked(3).mapIndexed { i, chunk -> FeedRow("s_live_$i", if (i == 0) "Live Channels" else "", RowKind.LIVE, chunk) }
-            SearchScope.MOVIES -> state.movies.chunked(5).mapIndexed { i, chunk -> FeedRow("s_m_$i", if (i == 0) "Movies" else "", RowKind.POSTER, chunk) }
-            SearchScope.SHOWS -> state.shows.chunked(5).mapIndexed { i, chunk -> FeedRow("s_s_$i", if (i == 0) "TV Shows" else "", RowKind.POSTER, chunk) }
-        }.filter { it.tiles.isNotEmpty() }
+    } else if (state.scope == SearchScope.ALL) {
+        listOf(
+            FeedRow("s_live", "Live Channels", RowKind.LIVE, state.channels),
+            FeedRow("s_movies", "Movies", RowKind.POSTER, state.movies),
+            FeedRow("s_shows", "TV Shows", RowKind.POSTER, state.shows),
+        ).filter { it.tiles.isNotEmpty() }
+    } else emptyList()
+
+    // One kind of result: a grid, which reads as a list of answers rather than rows to browse.
+    if (state.hasQuery && state.scope != SearchScope.ALL) {
+        val tiles: List<com.crimson.ui.components.Tile> = when (state.scope) {
+            SearchScope.LIVE -> state.channels
+            SearchScope.MOVIES -> state.movies
+            else -> state.shows
+        }
+        if (tiles.isEmpty()) {
+            if (!state.searching) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                EmptyState("No matches for “${state.query}”", "Try a channel name, a team, a network or part of a title.")
+            }
+            return
+        }
+        val live = state.scope == SearchScope.LIVE
+        val columns = if (live) 3 else 5
+        val gap = if (live) 16.dp else 14.dp
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val cell = (maxWidth - 24.dp - 40.dp - gap * (columns - 1)) / columns
+        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(columns),
+            contentPadding = PaddingValues(start = 24.dp, end = 40.dp, top = 16.dp, bottom = 200.dp),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+            verticalArrangement = Arrangement.spacedBy(if (live) 18.dp else 16.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(tiles.size, key = { tiles[it].key }) { index ->
+                val tile = tiles[index]
+                com.crimson.ui.components.TileCard(
+                    tile = tile,
+                    nowMs = nowMs,
+                    onClick = { actions.onOpen(tile, tiles) },
+                    focusRequester = if (index == 0) firstResult else null,
+                    width = cell,
+                )
+            }
+        }
+        }
+        return
     }
 
     if (rows.isEmpty()) {
@@ -177,7 +221,7 @@ private fun Results(
         }
         return
     }
-    val firstKey = rows.firstOrNull()?.tiles?.firstOrNull()?.key
+    val firstTile = rows.firstOrNull()?.tiles?.firstOrNull()?.key
     PivotScroll(offset = 24.dp) {
         LazyColumn(contentPadding = PaddingValues(bottom = 240.dp), modifier = Modifier.fillMaxSize()) {
             items(rows, key = { it.id }) { row ->
@@ -186,7 +230,7 @@ private fun Results(
                     nowMs = nowMs,
                     onTileClick = { tile -> actions.onOpen(tile, row.tiles) },
                     startPadding = 24.dp,
-                    restoreKey = firstKey,
+                    restoreKey = firstTile,
                     restoreRequester = firstResult,
                     showHeading = row.title.isNotBlank(),
                 )

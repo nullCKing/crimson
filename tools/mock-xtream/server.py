@@ -44,7 +44,8 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import epg as epg_mod  # noqa: E402
-import fixtures  # noqa: E402
+import fixtures
+import vod as vod_mod  # noqa: E402
 
 USERNAME = "testuser"
 PASSWORD = "testpass"
@@ -69,6 +70,7 @@ PUBLIC_STREAMS = [
 ]
 
 _catalog = None
+_vod = None
 _args = None
 _media_ready = threading.Event()
 _media_error = None
@@ -91,7 +93,7 @@ def build_media():
     try:
         os.makedirs(MEDIA_DIR, exist_ok=True)
         marker = os.path.join(MEDIA_DIR, ".ready")
-        if os.path.exists(marker):
+        if os.path.exists(marker) and os.path.exists(os.path.join(MEDIA_DIR, "film.mp4")):
             _media_ready.set()
             return
         if not have_ffmpeg():
@@ -106,7 +108,7 @@ def build_media():
             "ffmpeg", "-y", "-loglevel", "error",
             "-f", "lavfi", "-i", "smptehdbars=size=1280x720:rate=25:duration=%d" % duration,
             "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=48000:duration=%d" % duration,
-            "-vf", "drawtext=text='RETROGUIDE TEST %{pts\\:hms}':fontcolor=white:fontsize=48:"
+            "-vf", "drawtext=text='CRIMSON LIVE TEST %{pts\\:hms}':fontcolor=white:fontsize=48:"
                    "box=1:boxcolor=black@0.6:x=(w-text_w)/2:y=h-120",
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-g", "50", "-keyint_min", "50", "-sc_threshold", "0", "-b:v", "1500k",
@@ -121,6 +123,19 @@ def build_media():
             "-segment_format", "mpegts",
             os.path.join(MEDIA_DIR, "seg_%03d.ts"),
         ], check=True)
+
+        film = os.path.join(MEDIA_DIR, "film.mp4")
+        if not os.path.exists(film):
+            # Three minutes, seekable (faststart), so resume and the scrubber can be exercised.
+            subprocess.run([
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=25:duration=180",
+                "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=180",
+                "-vf", "drawtext=text='CRIMSON FILM %{pts\\:hms}':fontcolor=white:fontsize=44:"
+                       "box=1:boxcolor=black@0.6:x=(w-text_w)/2:y=h-110",
+                "-c:v", "libx264", "-preset", "veryfast", "-g", "50", "-b:v", "1200k",
+                "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", film,
+            ], check=True)
 
         with open(marker, "w") as fh:
             fh.write("ok\n")
@@ -210,7 +225,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_api(params)
             elif parsed.path == "/xmltv.php":
                 self.handle_xmltv(params)
-            elif parsed.path.startswith("/live/") or parsed.path.startswith("/movie/") or parsed.path.startswith("/series/"):
+            elif parsed.path.startswith("/movie/") or parsed.path.startswith("/series/"):
+                self.handle_film(parsed.path)
+            elif parsed.path.startswith("/live/"):
                 self.handle_live(parsed.path)
             elif parsed.path == "/_truth":
                 self.handle_truth()
@@ -266,107 +283,27 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if action == "get_vod_categories":
-            self._json([
-                {"category_id": "1", "category_name": "Action & Adventure"},
-                {"category_id": "2", "category_name": "Sci-Fi & Fantasy"},
-                {"category_id": "3", "category_name": "Classic Cinema"},
-            ])
+            self._json(_vod.movie_categories)
             return
 
         if action == "get_vod_streams":
-            cid = params.get("category_id", ["1"])[0]
-            self._json([
-                {
-                    "stream_id": 9001,
-                    "name": "The Long Afternoon",
-                    "category_id": cid,
-                    "stream_icon": "https://picsum.photos/300/450",
-                    "rating": "8.4",
-                    "container_extension": "mp4",
-                },
-                {
-                    "stream_id": 9002,
-                    "name": "Salt and Iron",
-                    "category_id": cid,
-                    "stream_icon": "https://picsum.photos/300/450",
-                    "rating": "7.9",
-                    "container_extension": "mp4",
-                },
-            ])
+            self._json(_vod.vod_streams(params.get("category_id", [None])[0]))
             return
 
         if action == "get_vod_info":
-            vid = int(params.get("vod_id", ["9001"])[0])
-            self._json({
-                "info": {
-                    "name": "The Long Afternoon",
-                    "description": "A long-running favourite returns with an episode that ties up more than it opens.",
-                    "duration": "108",
-                    "releasedate": "2024-05-12",
-                    "rating": "8.4",
-                    "cast": "John Doe, Jane Smith",
-                    "director": "Alan Smithee",
-                    "cover_big": "https://picsum.photos/300/450",
-                },
-                "movie_data": {
-                    "stream_id": vid,
-                    "name": "The Long Afternoon",
-                    "container_extension": "mp4",
-                },
-            })
+            self._json(_vod.vod_info(int(params.get("vod_id", ["0"])[0] or 0)))
             return
 
         if action == "get_series_categories":
-            self._json([
-                {"category_id": "10", "category_name": "Drama Series"},
-                {"category_id": "11", "category_name": "Documentary Series"},
-            ])
+            self._json(_vod.series_categories)
             return
 
         if action == "get_series":
-            cid = params.get("category_id", ["10"])[0]
-            self._json([
-                {
-                    "series_id": 8001,
-                    "name": "The Auditors",
-                    "category_id": cid,
-                    "cover": "https://picsum.photos/300/450",
-                    "plot": "The team faces its toughest test of the season.",
-                    "rating": "8.9",
-                    "releaseDate": "2023-09-01",
-                },
-            ])
+            self._json(_vod.series_list(params.get("category_id", [None])[0]))
             return
 
         if action == "get_series_info":
-            sid = int(params.get("series_id", ["8001"])[0])
-            self._json({
-                "info": {
-                    "name": "The Auditors",
-                    "cover": "https://picsum.photos/300/450",
-                    "plot": "The investigation turns up a detail that changes the shape of the whole case.",
-                },
-                "seasons": [
-                    {"season_number": 1},
-                    {"season_number": 2},
-                ],
-                "episodes": {
-                    "1": [
-                        {
-                            "id": 8101,
-                            "episode_num": 1,
-                            "title": "Pilot",
-                            "container_extension": "mp4",
-                        },
-                        {
-                            "id": 8102,
-                            "episode_num": 2,
-                            "title": "Second Shift",
-                            "container_extension": "mp4",
-                        },
-                    ],
-                },
-            })
+            self._json(_vod.series_info(int(params.get("series_id", ["0"])[0] or 0)))
             return
 
         self._json({"error": "unknown action"}, 400)
@@ -412,6 +349,42 @@ class Handler(BaseHTTPRequestHandler):
             for chunk in chunks:
                 write_chunk(chunk)
         self.wfile.write(b"0\r\n\r\n")
+
+    def handle_film(self, path):
+        """A film or an episode: the same finite MP4, with byte ranges so the player can seek."""
+        parts = path.strip("/").split("/")
+        if len(parts) != 4 or parts[1] != USERNAME or parts[2] != PASSWORD:
+            self._text("forbidden\n", 403)
+            return
+        film = os.path.join(MEDIA_DIR, "film.mp4")
+        if not os.path.exists(film):
+            self._text("test media unavailable: %s\n" % (_media_error or "still generating"), 503)
+            return
+        size = os.path.getsize(film)
+        start, end = 0, size - 1
+        header = self.headers.get("Range")
+        if header and header.startswith("bytes="):
+            first, _, last = header[6:].partition("-")
+            start = int(first) if first else 0
+            end = int(last) if last else size - 1
+            end = min(end, size - 1)
+            self.send_response(206)
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, size))
+        else:
+            self.send_response(200)
+        self.send_header("Content-Type", "video/mp4")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.end_headers()
+        with open(film, "rb") as fh:
+            fh.seek(start)
+            remaining = end - start + 1
+            while remaining > 0:
+                chunk = fh.read(min(65536, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
 
     def handle_live(self, path):
         parts = path.strip("/").split("/")
@@ -556,7 +529,10 @@ def main():
     parser.add_argument("--verbose", action="store_true")
     _args = parser.parse_args()
 
+    global _vod
     _catalog = fixtures.build_catalog(seed=_args.seed, target_channels=_args.channels)
+    _vod = vod_mod.VodCatalog()
+    print("mock-xtream: %d films and %d series in the on-demand catalogue" % (len(_vod.movies), len(_vod.series)))
     expected = _catalog.expected_kept
     print("mock-xtream: %d channels in %d categories (%d expected to survive the filter)"
           % (len(_catalog.channels), len(_catalog.categories), len(expected)))

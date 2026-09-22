@@ -88,10 +88,7 @@ private enum class Section(val label: String, val icon: ImageVector) {
 fun SettingsScreen(ui: UiState, actions: SettingsActions) {
     var section by rememberSaveable { mutableStateOf(Section.PROFILE) }
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { first.requestFocus() }
-    }
+    com.crimson.ui.components.InitialFocus(first)
     PageBackground {
         Row(Modifier.fillMaxSize().padding(start = Crimson.ScreenPadding, top = 30.dp, end = 32.dp)) {
             Column(Modifier.width(220.dp).fillMaxHeight()) {

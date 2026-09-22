@@ -57,10 +57,7 @@ class SportsActions(
 @Composable
 fun SportsScreen(state: SportsState, avatar: Int, actions: SportsActions) {
     val firstChip = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { firstChip.requestFocus() }
-    }
+    com.crimson.ui.components.InitialFocus(firstChip)
     // Live scores stay live while the page is open.
     LaunchedEffect(Unit) {
         while (true) {

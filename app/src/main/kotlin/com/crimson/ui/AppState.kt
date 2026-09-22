@@ -25,7 +25,12 @@ sealed interface Route {
     data object Loading : Route
     data class Main(val tab: MainTab) : Route
     data class Details(val kind: TitleKind, val id: Long) : Route
-    data class Search(val query: String = "", val scope: SearchScope = SearchScope.ALL) : Route
+    data class Search(
+        val query: String = "",
+        val scope: SearchScope = SearchScope.ALL,
+        /** Tried in turn when [query] finds no channel: a game's other networks, its teams. */
+        val fallbacks: List<String> = emptyList(),
+    ) : Route
     /** Every live category, grouped by country. */
     data object Directory : Route
     data object Guide : Route

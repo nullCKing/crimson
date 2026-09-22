@@ -121,11 +121,20 @@ fun BrowseScreen(
     val restore = remember { FocusRequester() }
     val heroMode = !inRows || wantHero
 
-    // Landing on the page: back where the viewer was, or on the billboard's Play.
+    // Landing on the page: back on the card the viewer left from, or on the billboard's Play with
+    // the rows scrolled back to the top.
     LaunchedEffect(state.rows.isNotEmpty(), state.hero != null) {
         withFrameNanos { }
         val restored = memory.inRows && memory.lastKey != null && runCatching { restore.requestFocus() }.isSuccess
-        if (!restored) runCatching { heroPlay.requestFocus() }
+        if (!restored) {
+            memory.inRows = false
+            runCatching { heroPlay.requestFocus() }
+            if (memory.list.firstVisibleItemIndex > 0) memory.list.scrollToItem(0)
+        }
+        // Once more after the page transition, when the outgoing page lets go of focus.
+        kotlinx.coroutines.delay(320)
+        if (!restored && !inRows) runCatching { heroPlay.requestFocus() }
+        else if (restored && !inRows) runCatching { restore.requestFocus() }
     }
     LaunchedEffect(wantHero) {
         if (!wantHero) return@LaunchedEffect
@@ -173,6 +182,7 @@ fun BrowseScreen(
                 hero = hero,
                 heroPlay = heroPlay,
                 actions = actions,
+                memory = memory,
                 modifier = Modifier.fillMaxWidth().height(spotHeight),
             )
 
@@ -195,15 +205,18 @@ fun BrowseScreen(
                         contentPadding = PaddingValues(bottom = 320.dp),
                         modifier = Modifier
                             .fillMaxSize()
-                            .onFocusChanged {
-                                inRows = it.hasFocus
-                                memory.inRows = it.hasFocus
-                            }
+                            // Where focus is is remembered from the cards themselves, not from here:
+                            // leaving the page clears focus, which would read as "left the rows".
+                            .onFocusChanged { inRows = it.hasFocus }
                             .onPreviewKeyEvent { e ->
-                                if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && focusedRow == 0) {
-                                    wantHero = true
-                                    true
-                                } else false
+                                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when {
+                                    e.key == Key.DirectionUp && focusedRow == 0 -> { wantHero = true; true }
+                                    // Back from the rows returns to the top of the page first,
+                                    // as a streaming app's home does; Back again leaves.
+                                    e.key == Key.Back || e.key == Key.Escape -> { wantHero = true; true }
+                                    else -> false
+                                }
                             },
                     ) {
                         itemsIndexed(state.rows, key = { _, row -> row.id }) { index, row ->
@@ -213,10 +226,13 @@ fun BrowseScreen(
                                 onTileClick = { actions.onTileClick(it, row) },
                                 onTileFocus = { tile ->
                                     focusedRow = index
-                                    memory.lastKey = tile.key
+                                    memory.inRows = true
+                                    // The row as well as the title: the same film can be in
+                                    // several rows, and the viewer left from one of them.
+                                    memory.lastKey = row.id + "|" + tile.key
                                     actions.onTileFocus(tile)
                                 },
-                                restoreKey = memory.lastKey,
+                                restoreKey = memory.lastKey?.takeIf { it.startsWith(row.id + "|") }?.substringAfter("|"),
                                 restoreRequester = restore,
                                 modifier = Modifier.padding(bottom = 4.dp),
                             )
@@ -246,6 +262,7 @@ private fun SpotlightPanel(
     hero: TitleTile?,
     heroPlay: FocusRequester,
     actions: BrowseActions,
+    memory: BrowseMemory,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(start = Crimson.ScreenPadding, end = 360.dp, top = if (heroMode) 14.dp else 26.dp)) {
@@ -292,7 +309,7 @@ private fun SpotlightPanel(
                     "Play", { actions.onPlay(hero) },
                     icon = CrimsonIcons.Play, style = ButtonStyle.PRIMARY,
                     focusRequester = heroPlay,
-                    onFocus = { if (it) actions.onHeroFocus(hero) },
+                    onFocus = { if (it) { memory.inRows = false; actions.onHeroFocus(hero) } },
                 )
                 CrimsonButton(
                     "More Info", { actions.onMoreInfo(hero) },

@@ -157,11 +157,7 @@ private fun LiveBanner(banner: BannerState, nowMs: Long, token: Long) {
                             .background(Color.White.copy(alpha = 0.08f)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (!channel.logoUrl.isNullOrBlank()) {
-                            AsyncImage(channel.logoUrl, channel.name, contentScale = ContentScale.Fit, modifier = Modifier.padding(8.dp).fillMaxSize())
-                        } else {
-                            Text(channel.shortName, style = CrimsonType.Label.copy(fontWeight = FontWeight.Black), maxLines = 1)
-                        }
+                        com.crimson.ui.components.ChannelLogo(channel.logoUrl, channel.shortName, Modifier.padding(8.dp).fillMaxSize(), textSize = 13.sp)
                     }
                     Spacer(Modifier.width(18.dp))
                     Column(Modifier.weight(1f)) {

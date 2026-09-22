@@ -54,7 +54,7 @@ import com.crimson.ui.theme.Crimson
 import com.crimson.ui.theme.CrimsonIcons
 import com.crimson.ui.theme.CrimsonType
 
-/** "Who's watching?" */
+/** "Who’s watching?" */
 @Composable
 fun ProfilesScreen(
     profiles: List<Profile>,
@@ -66,7 +66,7 @@ fun ProfilesScreen(
 ) {
     var managing by rememberSaveable { mutableStateOf(false) }
     val initial = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { initial.requestFocus() } }
+    com.crimson.ui.components.InitialFocus(initial)
 
     PageBackground {
         Wordmark(Modifier.align(Alignment.TopStart).padding(Crimson.ScreenPadding), size = 28.sp)
@@ -74,7 +74,7 @@ fun ProfilesScreen(
             Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(if (managing) "Manage Profiles" else "Who's watching?", style = CrimsonType.Display.copy(fontSize = 36.sp))
+            Text(if (managing) "Manage Profiles" else "Who’s watching?", style = CrimsonType.Display.copy(fontSize = 36.sp))
             Spacer(Modifier.height(34.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.Top) {
                 val focusTarget = profiles.firstOrNull { it.id == lastProfileId } ?: profiles.firstOrNull()
@@ -199,7 +199,7 @@ fun EditProfileScreen(
     var password by rememberSaveable { mutableStateOf(existing?.password ?: "") }
     var confirmDelete by remember { mutableStateOf(false) }
     val nameFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
+    com.crimson.ui.components.InitialFocus(nameFocus)
 
     val submit = { if (!saving) onSave(name, avatar, server, username, password) }
 

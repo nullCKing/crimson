@@ -1,6 +1,8 @@
 package com.crimson.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -59,11 +61,63 @@ fun PivotScroll(offset: Dp, content: @Composable () -> Unit) {
     val px = with(LocalDensity.current) { offset.toPx() }
     val spec = remember(px) {
         object : BringIntoViewSpec {
-            override val scrollAnimationSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+            // A spring, not a tween: the scroll target is recalculated on every frame while the
+            // list moves, and a fixed-duration tween restarted each frame barely moves at all.
+            override val scrollAnimationSpec = spring<Float>(
+                stiffness = Spring.StiffnessMediumLow,
+                dampingRatio = Spring.DampingRatioNoBouncy,
+            )
 
             override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
                 offset - px
         }
     }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
+}
+
+/**
+ * The opposite of [PivotScroll]: scroll only as far as needed to reveal the focused child, with a
+ * small margin, and not at all when it is already on screen. For document-like pages — a title's
+ * details — where a pivot would scroll the heading away.
+ *
+ * Needed explicitly because Compose's default on a television is itself a pivot, at 30% of the
+ * container.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun RevealScroll(margin: Dp = 24.dp, content: @Composable () -> Unit) {
+    val px = with(LocalDensity.current) { margin.toPx() }
+    val spec = remember(px) {
+        object : BringIntoViewSpec {
+            override val scrollAnimationSpec = spring<Float>(
+                stiffness = Spring.StiffnessMediumLow,
+                dampingRatio = Spring.DampingRatioNoBouncy,
+            )
+
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                val trailing = offset + size
+                return when {
+                    offset >= 0f && trailing <= containerSize -> 0f
+                    offset < 0f || size > containerSize - 2 * px -> offset - px
+                    else -> trailing - containerSize + px
+                }
+            }
+        }
+    }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
+}
+
+/**
+ * Puts focus on [requester] when a page appears, and again once the page transition has
+ * finished: the outgoing page gives up its focus when it is disposed, a moment after the new
+ * page has claimed it, and on a television nothing may ever be left without focus.
+ */
+@Composable
+fun InitialFocus(requester: androidx.compose.ui.focus.FocusRequester, key: Any? = Unit) {
+    androidx.compose.runtime.LaunchedEffect(key) {
+        androidx.compose.runtime.withFrameNanos { }
+        runCatching { requester.requestFocus() }
+        kotlinx.coroutines.delay(320)
+        runCatching { requester.requestFocus() }
+    }
 }

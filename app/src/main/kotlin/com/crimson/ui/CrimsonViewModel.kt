@@ -232,7 +232,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 MainTab.MY_LIST -> refreshMyList()
             }
             is Route.Details -> details.open(route.kind, route.id)
-            is Route.Search -> search.open(route.query, route.scope)
+            is Route.Search -> search.open(route.query, route.scope, route.fallbacks)
             is Route.Directory -> live.openDirectory()
             else -> Unit
         }
@@ -245,7 +245,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openDetails(kind: TitleKind, id: Long) = navigate(Route.Details(kind, id))
 
-    fun openSearch(query: String = "", scope: SearchScope = SearchScope.ALL) = navigate(Route.Search(query, scope))
+    fun openSearch(query: String = "", scope: SearchScope = SearchScope.ALL, fallbacks: List<String> = emptyList()) =
+        navigate(Route.Search(query, scope, fallbacks))
 
     fun openDirectory() = navigate(Route.Directory)
 
@@ -271,7 +272,10 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 val channels = zap.filterIsInstance<ChannelTile>().mapNotNull { live.channel(it.streamId) }
                 live.channel(tile.streamId)?.let { tuneAndWatch(it, channels) }
             }
-            is GameTile -> openSearch(BroadcastSearch.termFor(tile.event), SearchScope.LIVE)
+            is GameTile -> {
+                val terms = BroadcastSearch.termsFor(tile.event)
+                openSearch(terms.first(), SearchScope.LIVE, terms.drop(1))
+            }
         }
     }
 
