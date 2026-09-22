@@ -152,6 +152,8 @@ data class RawVodStream(
     val streamIcon: String? = null,
     val rating: String? = null,
     val containerExtension: String? = null,
+    /** When the provider added it, epoch seconds. Drives "Recently Added". */
+    val added: Long? = null,
 )
 
 /** Detailed movie information from `get_vod_info`. */
@@ -167,6 +169,13 @@ data class RawVodInfo(
     val coverUrl: String? = null,
     val backdropUrl: String? = null,
     val containerExtension: String? = null,
+    val genre: String? = null,
+    /** Runtime in seconds when the panel gives it, which is more reliable than [duration]. */
+    val durationSecs: Int? = null,
+    /** Age rating: "PG-13", "TV-MA". */
+    val mpaa: String? = null,
+    /** A YouTube id or URL, when the panel carries one. */
+    val trailer: String? = null,
 )
 
 /** A TV Series item from `get_series`. */
@@ -178,6 +187,10 @@ data class RawSeries(
     val plot: String? = null,
     val rating: String? = null,
     val releaseDate: String? = null,
+    val backdrop: String? = null,
+    /** Epoch seconds of the last change, which is when new episodes arrived. */
+    val lastModified: Long? = null,
+    val genre: String? = null,
 )
 
 /** One episode in a season from `get_series_info`. */
@@ -187,7 +200,12 @@ data class RawEpisode(
     val episodeNum: Int,
     val title: String,
     val containerExtension: String? = null,
+    /** The episode's synopsis. */
     val info: String? = null,
+    /** A still from the episode. */
+    val image: String? = null,
+    val durationSecs: Int? = null,
+    val releaseDate: String? = null,
 )
 
 /** Detailed series information and episode list from `get_series_info`. */
@@ -198,5 +216,11 @@ data class RawSeriesInfo(
     val plot: String? = null,
     val seasons: List<Int> = emptyList(),
     val episodes: Map<Int, List<RawEpisode>> = emptyMap(),
+    val backdrop: String? = null,
+    val genre: String? = null,
+    val releaseDate: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val rating: String? = null,
 )
 

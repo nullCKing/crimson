@@ -16,8 +16,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FavoriteCategoryEntity::class,
         VodEntity::class,
         SeriesEntity::class,
+        MyListEntity::class,
+        WatchProgressEntity::class,
     ],
-    version = 5,
+    version = 1,
     exportSchema = true,
 )
 abstract class CrimsonDatabase : RoomDatabase() {
@@ -28,20 +30,33 @@ abstract class CrimsonDatabase : RoomDatabase() {
     abstract fun channelNumberDao(): ChannelNumberDao
     abstract fun favoritesDao(): FavoritesDao
     abstract fun libraryDao(): LibraryDao
+    abstract fun userDao(): UserDao
 
     companion object {
-        private const val NAME = "crimson.db"
+        private val open = HashMap<String, CrimsonDatabase>()
 
-        @Volatile
-        private var instance: CrimsonDatabase? = null
+        private fun fileName(profileId: String) = "crimson_$profileId.db"
 
-        fun get(context: Context): CrimsonDatabase =
-            instance ?: synchronized(this) {
-                instance ?: build(context.applicationContext).also { instance = it }
-            }
+        /**
+         * The database for one profile. Every profile has its own file, because each is a
+         * different provider's channels and catalogue, and its own list and history.
+         *
+         * Instances stay open for the life of the process once opened, rather than being closed
+         * on a profile switch: a query still in flight from the profile being left would throw on
+         * a closed database, and a household has a handful of profiles at most.
+         */
+        fun open(context: Context, profileId: String): CrimsonDatabase = synchronized(open) {
+            open.getOrPut(profileId) { build(context.applicationContext, fileName(profileId)) }
+        }
 
-        private fun build(context: Context): CrimsonDatabase =
-            Room.databaseBuilder(context, CrimsonDatabase::class.java, NAME)
+        /** Removes a deleted profile's database. */
+        fun delete(context: Context, profileId: String) = synchronized(open) {
+            open.remove(profileId)?.close()
+            context.applicationContext.deleteDatabase(fileName(profileId))
+        }
+
+        private fun build(context: Context, name: String): CrimsonDatabase =
+            Room.databaseBuilder(context, CrimsonDatabase::class.java, name)
                 // The database is a cache of the provider's data, rebuildable by re-importing.
                 // On a schema change, throwing it away and re-importing is both simpler and
                 // safer than migrating a table the user has no unique data in.

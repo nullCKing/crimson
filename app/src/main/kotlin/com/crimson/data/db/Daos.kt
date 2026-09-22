@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -129,6 +131,10 @@ interface ProgramDao {
 
     @Query("SELECT * FROM programs WHERE channelKey = :channelKey AND startMs <= :now AND endMs > :now LIMIT 1")
     suspend fun nowPlaying(channelKey: String, now: Long): ProgramEntity?
+
+    /** What is on now across many channels at once, for the live cards. */
+    @Query("SELECT * FROM programs WHERE channelKey IN (:channelKeys) AND startMs <= :now AND endMs > :now")
+    suspend fun nowPlayingFor(channelKeys: List<String>, now: Long): List<ProgramEntity>
 
     @Query("SELECT COUNT(*) FROM programs")
     suspend fun count(): Int
@@ -286,6 +292,67 @@ interface LibraryDao {
     @Query("SELECT COUNT(*) FROM vod")
     suspend fun vodCount(): Int
 
+    /** A feed row: SQL built by [com.crimson.core.catalog.CatalogSql]. */
+    @RawQuery(observedEntities = [VodEntity::class])
+    suspend fun vodQuery(query: SupportSQLiteQuery): List<VodEntity>
+
+    @RawQuery(observedEntities = [SeriesEntity::class])
+    suspend fun seriesQuery(query: SupportSQLiteQuery): List<SeriesEntity>
+
+    @Query("SELECT * FROM vod WHERE streamId = :id")
+    suspend fun vod(id: Long): VodEntity?
+
+    @Query("SELECT * FROM series WHERE seriesId = :id")
+    suspend fun series(id: Long): SeriesEntity?
+
+    @Query("SELECT * FROM vod WHERE streamId IN (:ids)")
+    suspend fun vodByIds(ids: List<Long>): List<VodEntity>
+
+    @Query("SELECT * FROM series WHERE seriesId IN (:ids)")
+    suspend fun seriesByIds(ids: List<Long>): List<SeriesEntity>
+
+    /**
+     * Joins one IMDb title onto the catalogue.
+     *
+     * Two statements rather than one `OR`, so each can use its own index. The year window is
+     * plus or minus one because a film released at the turn of a year is filed under either,
+     * and a name with no year at all is matched on the name alone — the index is applied in
+     * ascending order of popularity, so the most-rated title of that name is the last to write.
+     */
+    @Query(
+        """
+        UPDATE vod SET genres = :genres, imdbRating = :rating, imdbVotes = :votes,
+            titleYear = COALESCE(titleYear, :year)
+        WHERE titleKey = :key AND (titleYear IS NULL OR titleYear BETWEEN :year - 1 AND :year + 1)
+        """
+    )
+    fun enrichVodBlocking(key: String, year: Int, genres: String, rating: Float, votes: Int): Int
+
+    @Query(
+        """
+        UPDATE vod SET genres = :genres, imdbRating = :rating, imdbVotes = :votes,
+            titleYear = COALESCE(titleYear, :year)
+        WHERE titleKeyAlt = :key AND (titleYear IS NULL OR titleYear BETWEEN :year - 1 AND :year + 1)
+        """
+    )
+    fun enrichVodAltBlocking(key: String, year: Int, genres: String, rating: Float, votes: Int): Int
+
+    @Query(
+        """
+        UPDATE series SET genres = :genres, imdbRating = :rating, imdbVotes = :votes,
+            titleYear = COALESCE(titleYear, :year)
+        WHERE (titleKey = :key OR titleKeyAlt = :key)
+          AND (titleYear IS NULL OR titleYear BETWEEN :year - 1 AND :year + 1)
+        """
+    )
+    fun enrichSeriesBlocking(key: String, year: Int, genres: String, rating: Float, votes: Int): Int
+
+    @Query("SELECT COUNT(*) FROM vod WHERE imdbVotes IS NOT NULL")
+    suspend fun vodIndexedCount(): Int
+
+    @Query("SELECT COUNT(*) FROM series WHERE imdbVotes IS NOT NULL")
+    suspend fun seriesIndexedCount(): Int
+
     @Query("SELECT COUNT(*) FROM series")
     suspend fun seriesCount(): Int
 
@@ -298,3 +365,40 @@ interface LibraryDao {
 
 /** A category as the cached catalogue knows it. */
 data class CategoryRef(val categoryId: String, val categoryName: String?)
+
+@Dao
+interface UserDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addToList(item: MyListEntity)
+
+    @Query("DELETE FROM my_list WHERE kind = :kind AND itemId = :itemId")
+    suspend fun removeFromList(kind: String, itemId: Long)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM my_list WHERE kind = :kind AND itemId = :itemId)")
+    suspend fun isInList(kind: String, itemId: Long): Boolean
+
+    @Query("SELECT * FROM my_list ORDER BY addedAt DESC")
+    fun observeList(): Flow<List<MyListEntity>>
+
+    @Query("SELECT * FROM my_list ORDER BY addedAt DESC")
+    suspend fun list(): List<MyListEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveProgress(progress: WatchProgressEntity)
+
+    @Query("SELECT * FROM watch_progress WHERE `key` = :key")
+    suspend fun progress(key: String): WatchProgressEntity?
+
+    @Query("SELECT * FROM watch_progress WHERE seriesId = :seriesId ORDER BY updatedAt DESC")
+    suspend fun progressForSeries(seriesId: Long): List<WatchProgressEntity>
+
+    @Query("SELECT * FROM watch_progress ORDER BY updatedAt DESC LIMIT :limit")
+    suspend fun recent(limit: Int): List<WatchProgressEntity>
+
+    @Query("SELECT * FROM watch_progress ORDER BY updatedAt DESC LIMIT :limit")
+    fun observeRecent(limit: Int): Flow<List<WatchProgressEntity>>
+
+    @Query("DELETE FROM watch_progress WHERE `key` = :key")
+    suspend fun deleteProgress(key: String)
+}

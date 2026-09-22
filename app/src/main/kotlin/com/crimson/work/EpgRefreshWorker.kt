@@ -32,12 +32,14 @@ class EpgRefreshWorker(
     override suspend fun doWork(): Result {
         val container = AppContainer.get(applicationContext)
 
-        // Signed out, or signed in but not yet connected in this process: nothing to refresh.
-        val account = container.credentials.load() ?: return Result.success()
-        if (container.client == null) container.connect(account)
+        // The profile on screen, or the one used last when the app is not running. With no
+        // profile at all there is nothing to refresh.
+        val session = container.session
+            ?: container.profiles.byId(container.profiles.lastProfileId)?.let(container::activate)
+            ?: return Result.success()
 
-        val importer = container.xmltvImporter() ?: return Result.success()
-        val settings = container.settings
+        val importer = session.xmltvImporter()
+        val settings = session.settings
 
         return try {
             val current = settings.settings.first()

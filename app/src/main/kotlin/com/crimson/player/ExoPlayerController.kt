@@ -102,8 +102,10 @@ class ExoPlayerController(
 
     override fun play(channel: PlayableChannel) {
         if (_state.value.channel?.streamId == channel.streamId &&
-            (_state.value.isPlaying || _state.value.isBuffering)
+            _state.value.channel?.isLive == channel.isLive &&
+            (_state.value.isPlaying || _state.value.isBuffering || _state.value.isPaused)
         ) {
+            if (_state.value.isPaused) resume()
             return
         }
         cancelPendingRetry()
@@ -121,11 +123,52 @@ class ExoPlayerController(
         startStream(channel)
     }
 
-    private fun startStream(channel: PlayableChannel) {
-        exoPlayer.setMediaItem(MediaItem.fromUri(channel.url))
+    private fun startStream(channel: PlayableChannel, positionMs: Long = channel.startPositionMs) {
+        if (!channel.isLive && positionMs > 0) {
+            exoPlayer.setMediaItem(MediaItem.fromUri(channel.url), positionMs)
+        } else {
+            exoPlayer.setMediaItem(MediaItem.fromUri(channel.url))
+        }
         exoPlayer.prepare()
         exoPlayer.play()
     }
+
+    override fun togglePause() {
+        if (_state.value.isPaused) resume() else pause()
+    }
+
+    override fun pause() {
+        if (_state.value.channel == null) return
+        exoPlayer.pause()
+        _state.value = _state.value.copy(isPaused = true)
+    }
+
+    override fun resume() {
+        if (_state.value.channel == null) return
+        if (_state.value.isEnded) {
+            exoPlayer.seekTo(0)
+            _state.value = _state.value.copy(isEnded = false)
+        }
+        exoPlayer.play()
+        _state.value = _state.value.copy(isPaused = false)
+    }
+
+    override fun seekBy(deltaMs: Long) {
+        if (_state.value.channel?.isLive != false) return
+        seekTo(exoPlayer.currentPosition + deltaMs)
+    }
+
+    override fun seekTo(positionMs: Long) {
+        if (_state.value.channel?.isLive != false) return
+        val duration = exoPlayer.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+        exoPlayer.seekTo(positionMs.coerceIn(0L, (duration - 1_000L).coerceAtLeast(0L)))
+        if (_state.value.isEnded) _state.value = _state.value.copy(isEnded = false)
+    }
+
+    override fun positionMs(): Long = exoPlayer.currentPosition.coerceAtLeast(0L)
+
+    override fun durationMs(): Long =
+        if (_state.value.channel?.isLive != false) 0L else exoPlayer.duration.takeIf { it > 0 } ?: 0L
 
     override fun retry() {
         val channel = _state.value.channel ?: return
@@ -138,8 +181,10 @@ class ExoPlayerController(
             isReconnecting = false,
             error = null,
             timeToFirstFrameMs = null,
+            isEnded = false,
         )
-        startStream(channel)
+        // A film that failed part way resumes where it was, not from the start.
+        startStream(channel, if (channel.isLive) 0L else exoPlayer.currentPosition)
     }
 
     override fun stop() {
@@ -194,9 +239,10 @@ class ExoPlayerController(
             isReconnecting = true,
             error = null,
         )
+        val resumeAt = if (channel.isLive) 0L else exoPlayer.currentPosition
         val runnable = Runnable {
             pendingRetry = null
-            if (_state.value.channel?.streamId == channel.streamId) startStream(channel)
+            if (_state.value.channel?.streamId == channel.streamId) startStream(channel, resumeAt)
         }
         pendingRetry = runnable
         handler.postDelayed(runnable, delay)
@@ -223,16 +269,24 @@ class ExoPlayerController(
                 }
 
                 Player.STATE_ENDED ->
-                    // A live stream should never end. When one does, the source went away, so
-                    // treat it exactly like an error rather than sitting on a frozen frame.
-                    scheduleReconnect(REASON_ENDED)
+                    if (_state.value.channel?.isLive == false) {
+                        // A film that ends has simply finished.
+                        _state.value = _state.value.copy(isPlaying = false, isBuffering = false, isEnded = true)
+                    } else {
+                        // A live stream should never end. When one does, the source went away, so
+                        // treat it exactly like an error rather than sitting on a frozen frame.
+                        scheduleReconnect(REASON_ENDED)
+                    }
 
                 Player.STATE_IDLE -> Unit
             }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            _state.value = _state.value.copy(isPlaying = isPlaying)
+            _state.value = _state.value.copy(
+                isPlaying = isPlaying,
+                isPaused = if (isPlaying) false else _state.value.isPaused,
+            )
         }
 
         override fun onRenderedFirstFrame() {

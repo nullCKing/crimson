@@ -19,7 +19,10 @@ import com.crimson.domain.GuideChannel
 import com.crimson.ui.BannerState
 import com.crimson.ui.GuideState
 import com.crimson.ui.guide.GuideScreen
-import com.crimson.ui.player.ChannelBanner
+import com.crimson.player.PlaybackState
+import com.crimson.ui.NowPlaying
+import com.crimson.ui.player.PlayerActions
+import com.crimson.ui.player.PlayerOverlay
 import com.crimson.ui.theme.GuideTheme
 import org.junit.Rule
 import org.junit.Test
@@ -245,27 +248,29 @@ class GuideScreenshotTest {
     }
 
     @Test
-    fun `channel banner`() {
+    fun `live channel banner over video`() {
         val slots = programs()["k1"]!!
         val current = slots.first { it.startMs <= now && it.endMs > now }
         val next = slots.first { it.startMs > now }
+        compose.mainClock.autoAdvance = false
         compose.setContent {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(androidx.compose.ui.graphics.Color(0xFF101010))
+                    .background(androidx.compose.ui.graphics.Color(0xFF26303A))
             ) {
-                ChannelBanner(
-                    number = 1001,
-                    name = "HBO",
-                    now = current,
-                    next = next,
+                PlayerOverlay(
+                    playback = PlaybackState(isPlaying = true),
+                    banner = BannerState(channels().first(), current, next, showToken = 1L),
+                    nowPlaying = NowPlaying(NowPlaying.Kind.LIVE, 1L, "HBO"),
+                    controlsToken = 0L,
                     nowMs = now,
-                    theme = theme,
-                    modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
+                    pendingDigits = "",
+                    actions = PlayerActions({}, {}, {}, {}, {}, {}, {}, {}, { 0L }, { 0L }),
                 )
             }
         }
-        compose.onRoot().captureRoboImage("src/test/screenshots/channel_banner.png")
+        compose.mainClock.advanceTimeBy(800)
+        compose.onRoot().captureRoboImage("src/test/screenshots/live_banner.png")
     }
 }

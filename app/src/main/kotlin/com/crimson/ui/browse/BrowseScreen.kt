@@ -1,252 +1,345 @@
 package com.crimson.ui.browse
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.crimson.ui.BrowseState
-import com.crimson.ui.PackageSummary
-import com.crimson.ui.components.PosterItem
-import com.crimson.ui.components.RetroRow
-import com.crimson.ui.components.RetroSearchField
-import com.crimson.ui.components.SectionLabel
-import com.crimson.ui.input.tvInteractive
-import com.crimson.ui.theme.BarButton
-import com.crimson.ui.theme.GuideTheme
-import com.crimson.ui.theme.RetroHeader
-import com.crimson.ui.theme.RetroPage
-import com.crimson.ui.theme.captionStyle
-import com.crimson.ui.theme.headingStyle
-import com.crimson.ui.theme.labelStyle
-import com.crimson.ui.theme.retroPanel
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.crimson.ui.components.Backdrop
+import com.crimson.ui.components.ButtonStyle
+import com.crimson.ui.components.CrimsonButton
+import com.crimson.ui.components.EmptyState
+import com.crimson.ui.components.FeedRow
+import com.crimson.ui.components.FeedRowView
+import com.crimson.ui.components.LiveBadge
+import com.crimson.ui.components.MainTab
+import com.crimson.ui.components.MetaLine
+import com.crimson.ui.components.PivotScroll
+import com.crimson.ui.components.ProgressLine
+import com.crimson.ui.components.Tile
+import com.crimson.ui.components.TitleTile
+import com.crimson.ui.components.TopNav
+import com.crimson.ui.feed.FeedState
+import com.crimson.ui.feed.Spotlight
+import com.crimson.ui.theme.Crimson
+import com.crimson.ui.theme.CrimsonIcons
+import com.crimson.ui.theme.CrimsonType
+import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+/** What a browse page can ask for. */
+class BrowseActions(
+    val onTab: (MainTab) -> Unit,
+    val onSearch: () -> Unit,
+    val onProfile: () -> Unit,
+    val onTileClick: (Tile, FeedRow) -> Unit,
+    val onTileFocus: (Tile) -> Unit,
+    val onHeroFocus: (TitleTile) -> Unit,
+    val onPlay: (TitleTile) -> Unit,
+    val onMoreInfo: (TitleTile) -> Unit,
+    val onLoadMore: () -> Unit,
+)
+
+/** Remembered across visits to a page: where it was scrolled to and which card had focus. */
+class BrowseMemory {
+    val list = LazyListState()
+    var lastKey: String? = null
+    var inRows: Boolean = false
+}
 
 /**
- * Browse: one screen for finding something to watch rather than knowing what you want.
+ * Home, TV Shows and Movies.
  *
- * A search box over everything — channels, films and series at once — then the viewer's starred
- * channels, the channel packages, and rows built from curated lists showing only the titles this
- * account actually carries. It is the shape a streaming service uses because it is the shape that
- * works, drawn the way a set-top box would have drawn it.
- *
- * While a search is running the rows are replaced by its results rather than pushed down the
- * page: a viewer who has typed something is looking for it, not for what was underneath.
+ * Two modes, the way a streaming app's TV home works. At the top, the page is a billboard: the
+ * featured title's artwork across the screen, its synopsis, Play and More Info, the navigation
+ * bar above. Once the cursor goes down into the rows the navigation bar folds away, the
+ * billboard shrinks into a spotlight that follows the focused card — its artwork, title, rating
+ * and synopsis — and the focused row stays pinned just under it while the rows scroll past.
  */
 @Composable
 fun BrowseScreen(
-    state: BrowseState,
+    tab: MainTab,
+    state: FeedState,
+    spotlight: Spotlight,
     nowMs: Long,
-    theme: GuideTheme,
-    onQueryChange: (String) -> Unit,
-    onOpenItem: (PosterItem) -> Unit,
-    onOpenPackage: (String) -> Unit,
-    onBack: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenOnDemand: () -> Unit,
-    modifier: Modifier = Modifier,
+    avatar: Int,
+    libraryStatus: String?,
+    memory: BrowseMemory,
+    actions: BrowseActions,
 ) {
-    RetroPage(
-        theme = theme,
-        modifier = modifier,
-        header = {
-            RetroHeader(
-                title = "BROWSE",
-                subtitle = "Search everything, or pick up where a cable guide left off",
-                nowMs = nowMs,
-                theme = theme,
-                trailing = if (state.hasQuery) "${state.resultCount} RESULTS" else null,
-            )
-        },
-        buttons = listOf(
-            BarButton("BACK", onBack, key = "◄", keyColor = theme.keyBlue),
-            BarButton("ON DEMAND", onOpenOnDemand, key = "B", keyColor = theme.keyGreen),
-            BarButton("SETTINGS", onOpenSettings, key = "MENU", keyColor = theme.keyBlue),
-        ),
-        hint = "TYPE TO SEARCH  •  ▲▼ MOVE BETWEEN ROWS  •  ◄► ALONG A ROW",
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            RetroSearchField(
-                value = state.query,
-                onValueChange = onQueryChange,
-                theme = theme,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(10.dp))
+    var inRows by remember { mutableStateOf(memory.inRows) }
+    var wantHero by remember { mutableStateOf(false) }
+    var focusedRow by remember { mutableIntStateOf(0) }
+    val heroPlay = remember { FocusRequester() }
+    val restore = remember { FocusRequester() }
+    val heroMode = !inRows || wantHero
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxSize(),
+    // Landing on the page: back where the viewer was, or on the billboard's Play.
+    LaunchedEffect(state.rows.isNotEmpty(), state.hero != null) {
+        withFrameNanos { }
+        val restored = memory.inRows && memory.lastKey != null && runCatching { restore.requestFocus() }.isSuccess
+        if (!restored) runCatching { heroPlay.requestFocus() }
+    }
+    LaunchedEffect(wantHero) {
+        if (!wantHero) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { heroPlay.requestFocus() }
+        memory.list.scrollToItem(0)
+        wantHero = false
+    }
+    LaunchedEffect(memory.list, state.rows.size) {
+        snapshotFlow { memory.list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .distinctUntilChanged()
+            .collect { last -> if (last >= state.rows.size - 3) actions.onLoadMore() }
+    }
+
+    val spotHeight by animateDpAsState(if (heroMode) 262.dp else 206.dp, tween(320), label = "spotHeight")
+
+    Box(Modifier.fillMaxSize().background(Crimson.Background)) {
+        val hero = state.hero
+        val shown = if (heroMode && hero != null && spotlight.key != hero.key) Spotlight(key = hero.key, title = hero.name, poster = hero.poster, backdrop = hero.backdrop, rating = hero.rating, year = hero.year, genres = hero.genres) else spotlight
+        if (shown.isLive && shown.backdrop == null) {
+            LiveBackdrop(shown.logo)
+        } else {
+            Backdrop(url = shown.backdrop, fallback = shown.poster, widthFraction = 0.7f, heightFraction = if (heroMode) 0.8f else 0.66f)
+        }
+
+        Column(Modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visible = heroMode,
+                enter = expandVertically(tween(260)) + fadeIn(tween(260)),
+                exit = shrinkVertically(tween(260)) + fadeOut(tween(200)),
             ) {
-                if (state.hasQuery) {
-                    if (state.searching && state.resultCount == 0) {
-                        item { Text(text = "Searching…", style = theme.captionStyle()) }
-                    } else if (state.resultCount == 0) {
-                        item {
-                            Text(
-                                text = "Nothing matches \"${state.query}\".",
-                                style = theme.labelStyle(theme.infoDetail),
+                Box(Modifier.background(Crimson.ScrimTop)) {
+                    TopNav(
+                        selected = tab,
+                        avatar = avatar,
+                        onSelectTab = actions.onTab,
+                        onSearch = actions.onSearch,
+                        onProfile = actions.onProfile,
+                    )
+                }
+            }
+            SpotlightPanel(
+                spotlight = shown,
+                heroMode = heroMode,
+                hero = hero,
+                heroPlay = heroPlay,
+                actions = actions,
+                modifier = Modifier.fillMaxWidth().height(spotHeight),
+            )
+
+            when {
+                state.rows.isEmpty() && state.loading ->
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                        EmptyState("Setting the table", "Picking out what to watch…", busy = true)
+                    }
+                state.rows.isEmpty() ->
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                        EmptyState(
+                            if (libraryStatus != null) "Almost there" else "Nothing here yet",
+                            libraryStatus ?: state.note ?: "This account's catalogue has no titles for this page.",
+                            busy = libraryStatus != null,
+                        )
+                    }
+                else -> PivotScroll(offset = 26.dp) {
+                    LazyColumn(
+                        state = memory.list,
+                        contentPadding = PaddingValues(bottom = 320.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .onFocusChanged {
+                                inRows = it.hasFocus
+                                memory.inRows = it.hasFocus
+                            }
+                            .onPreviewKeyEvent { e ->
+                                if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && focusedRow == 0) {
+                                    wantHero = true
+                                    true
+                                } else false
+                            },
+                    ) {
+                        itemsIndexed(state.rows, key = { _, row -> row.id }) { index, row ->
+                            FeedRowView(
+                                row = row,
+                                nowMs = nowMs,
+                                onTileClick = { actions.onTileClick(it, row) },
+                                onTileFocus = { tile ->
+                                    focusedRow = index
+                                    memory.lastKey = tile.key
+                                    actions.onTileFocus(tile)
+                                },
+                                restoreKey = memory.lastKey,
+                                restoreRequester = restore,
+                                modifier = Modifier.padding(bottom = 4.dp),
                             )
                         }
-                    }
-                    if (state.channelResults.isNotEmpty()) {
-                        item {
-                            RetroRow(
-                                title = "CHANNELS",
-                                subtitle = "Live now",
-                                items = state.channelResults,
-                                theme = theme,
-                                onSelect = onOpenItem,
-                                posterWidth = 150.dp,
-                            )
-                        }
-                    }
-                    if (state.movieResults.isNotEmpty()) {
-                        item {
-                            RetroRow("FILMS", "On demand", state.movieResults, theme, onOpenItem)
-                        }
-                    }
-                    if (state.seriesResults.isNotEmpty()) {
-                        item {
-                            RetroRow("SERIES", "On demand", state.seriesResults, theme, onOpenItem)
-                        }
-                    }
-                } else {
-                    if (state.packages.isNotEmpty()) {
-                        item {
-                            Column {
-                                SectionLabel(
-                                    "LIVE TV LINEUPS",
-                                    "Choose a lineup or category to open the guide",
-                                    theme,
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    items(state.packages, key = { it.id }) { pkg ->
-                                        PackageCard(pkg, theme) { onOpenPackage(pkg.id) }
-                                    }
+                        if (!state.exhausted) {
+                            item(key = "more") {
+                                Box(Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
+                                    com.crimson.ui.components.Spinner(size = 26.dp, stroke = 3.dp)
                                 }
                             }
                         }
                     }
-                    if (state.favorites.isNotEmpty()) {
-                        item {
-                            RetroRow(
-                                title = "★ YOUR FAVOURITE CHANNELS",
-                                subtitle = "Starred in the guide",
-                                items = state.favorites,
-                                theme = theme,
-                                onSelect = onOpenItem,
-                                posterWidth = 150.dp,
-                            )
-                        }
-                    }
-                    state.note?.let { note ->
-                        item { Text(text = note, style = theme.captionStyle()) }
-                    }
-                    // Films and series alternate so the top of the page has both.
-                    val rows = interleave(state.movieRows, state.seriesRows)
-                    items(rows, key = { it.id }) { row ->
-                        RetroRow(
-                            title = row.title.uppercase(),
-                            subtitle = row.subtitle,
-                            items = row.items,
-                            theme = theme,
-                            onSelect = onOpenItem,
-                        )
-                    }
                 }
             }
         }
-    }
-}
 
-private fun <T> interleave(a: List<T>, b: List<T>): List<T> {
-    val out = ArrayList<T>(a.size + b.size)
-    var i = 0
-    while (i < a.size || i < b.size) {
-        a.getOrNull(i)?.let(out::add)
-        b.getOrNull(i)?.let(out::add)
-        i++
-    }
-    return out
-}
-
-/** A package, with how much of it this account can actually fill. */
-@Composable
-private fun PackageCard(
-    pkg: PackageSummary,
-    theme: GuideTheme,
-    onOpen: () -> Unit,
-) {
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .width(300.dp)
-            .retroPanel(
-                theme = theme,
-                base = if (focused) theme.highlight else theme.panelSelected,
-                corner = 5.dp,
-                edge = if (focused) theme.highlight else theme.panelEdge,
-                edgeWidth = if (focused) 2.dp else 1.dp,
-                gloss = true,
-            )
-            .tvInteractive(onSelect = onOpen, onFocus = { focused = it })
-            .padding(14.dp),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = pkg.name.uppercase(),
-                style = theme.headingStyle(if (focused) theme.highlightText else theme.infoTitle)
-                    .copy(fontSize = theme.detailSize),
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val badgeText = when {
-                pkg.id == "__categories__" -> "${pkg.found} GROUPS"
-                pkg.total == pkg.found -> "${pkg.found} CH"
-                else -> "${pkg.found}/${pkg.total}"
-            }
-            Box(
-                modifier = Modifier
-                    .retroPanel(theme, theme.keyRed, corner = 3.dp, edge = theme.bevelDark, gloss = true)
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = badgeText,
-                    color = androidx.compose.ui.graphics.Color.White,
-                    fontSize = theme.sectionSize,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+        if (libraryStatus != null && state.rows.isNotEmpty() && heroMode) {
+            StatusPill(libraryStatus, Modifier.align(Alignment.BottomEnd).padding(24.dp))
         }
-        Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable
+private fun SpotlightPanel(
+    spotlight: Spotlight,
+    heroMode: Boolean,
+    hero: TitleTile?,
+    heroPlay: FocusRequester,
+    actions: BrowseActions,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.padding(start = Crimson.ScreenPadding, end = 360.dp, top = if (heroMode) 14.dp else 26.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (spotlight.isLive) {
+                LiveBadge()
+                Spacer(Modifier.width(10.dp))
+            }
+            val overline = spotlight.overline ?: if (heroMode && hero != null) "FEATURED" else null
+            if (overline != null) Text(overline, style = CrimsonType.Overline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(Modifier.height(6.dp))
         Text(
-            text = pkg.description,
-            color = if (focused) theme.highlightText else theme.infoDetail,
-            fontSize = theme.sectionSize,
-            fontFamily = theme.fontFamily,
+            spotlight.title,
+            style = CrimsonType.Display.copy(fontSize = if (heroMode) 38.sp else 30.sp, lineHeight = if (heroMode) 40.sp else 32.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        Spacer(Modifier.height(8.dp))
+        MetaLine(
+            rating = spotlight.rating,
+            year = spotlight.year,
+            ageRating = spotlight.ageRating,
+            runtime = spotlight.runtime,
+            extra = spotlight.genres,
+        )
+        if (spotlight.isLive && spotlight.liveProgress > 0f) {
+            Spacer(Modifier.height(8.dp))
+            ProgressLine(spotlight.liveProgress, Modifier.width(260.dp))
+        }
+        if (!spotlight.description.isNullOrBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                spotlight.description,
+                style = CrimsonType.Body.copy(color = Color(0xFFD7D7DD)),
+                maxLines = if (heroMode) 3 else 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (heroMode && hero != null) {
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 14.dp)) {
+                CrimsonButton(
+                    "Play", { actions.onPlay(hero) },
+                    icon = CrimsonIcons.Play, style = ButtonStyle.PRIMARY,
+                    focusRequester = heroPlay,
+                    onFocus = { if (it) actions.onHeroFocus(hero) },
+                )
+                CrimsonButton(
+                    "More Info", { actions.onMoreInfo(hero) },
+                    icon = CrimsonIcons.Info,
+                    onFocus = { if (it) actions.onHeroFocus(hero) },
+                )
+            }
+        }
+    }
+}
+
+/** For a live channel with no artwork: its logo, large and dim, on a red glow. */
+@Composable
+private fun LiveBackdrop(logo: String?) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    listOf(Crimson.RedDeep.copy(alpha = 0.55f), Crimson.Background),
+                    center = androidx.compose.ui.geometry.Offset(1500f, 200f),
+                    radius = 1300f,
+                )
+            )
+    ) {
+        if (!logo.isNullOrBlank()) {
+            AsyncImage(
+                logo, null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 90.dp).size(220.dp, 150.dp),
+                alpha = 0.35f,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(text: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Crimson.SurfaceRaised.copy(alpha = 0.92f))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        com.crimson.ui.components.Spinner(size = 14.dp, stroke = 2.dp)
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = CrimsonType.Caption.copy(color = Crimson.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp))
     }
 }

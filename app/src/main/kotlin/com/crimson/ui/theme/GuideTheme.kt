@@ -17,7 +17,12 @@ import androidx.compose.ui.unit.sp
 import com.crimson.core.epg.ProgramCategory
 
 /**
- * Every colour, size, count and spacing the guide and the channel banner use.
+ * Every colour, size, count and spacing the guide grid uses.
+ *
+ * Crimson inherited this from RetroGuide, where it described a 2000s cable box. The structure is
+ * unchanged — the grid is still drawn from these numbers and nothing else — but the defaults are
+ * now the dark, flat, red-accented look of the rest of the app: no gradients, bevels, gloss or
+ * scanlines, and a red highlight. The retro switches are still here, set to off.
  *
  * This is the one place to change the look. The grid is custom-drawn onto a Canvas, so there are
  * no styles or XML attributes to chase: the drawing code reads its numbers from here and nowhere
@@ -32,44 +37,44 @@ import com.crimson.core.epg.ProgramCategory
 data class GuideTheme(
     // ---------------------------------------------------------------- colour
     /** Page background. The deep navy of the Comcast reference. */
-    val background: Color = Color(0xFF081438),
+    val background: Color = Color(0xFF0A0A0C),
     /** The slightly lighter navy the info panel and headers sit on. */
-    val panel: Color = Color(0xFF0E2154),
-    val panelEdge: Color = Color(0xFF2A4A94),
-    val panelSelected: Color = Color(0xFF1B3D8A),
+    val panel: Color = Color(0xFF16161A),
+    val panelEdge: Color = Color(0x1FFFFFFF),
+    val panelSelected: Color = Color(0xFF26262C),
 
     /** Programme cells, coloured by category. Movies are magenta, everything else blue. */
-    val movieCell: Color = Color(0xFF962092),
-    val sportsCell: Color = Color(0xFF1E48A0),
-    val newsCell: Color = Color(0xFF1E48A0),
-    val kidsCell: Color = Color(0xFF1E48A0),
-    val seriesCell: Color = Color(0xFF1E48A0),
+    val movieCell: Color = Color(0xFF3A1519),
+    val sportsCell: Color = Color(0xFF1A2433),
+    val newsCell: Color = Color(0xFF202027),
+    val kidsCell: Color = Color(0xFF202027),
+    val seriesCell: Color = Color(0xFF202027),
     /** Cells that stand in for missing guide data. */
-    val fillerCell: Color = Color(0xFF15305F),
+    val fillerCell: Color = Color(0xFF141418),
 
     /** The highlighted cell: bright yellow with dark text, as in the DirecTV reference. */
-    val highlight: Color = Color(0xFFF7C818),
-    val highlightText: Color = Color(0xFF1A1200),
+    val highlight: Color = Color(0xFFE50914),
+    val highlightText: Color = Color.White,
 
     val cellText: Color = Color.White,
     /** The dark outline drawn behind cell text so it stays readable on any cell colour. */
-    val cellTextOutline: Color = Color(0xFF040A1E),
+    val cellTextOutline: Color = Color.Transparent,
 
     /** Time-header tabs: light blue fill, dark text, rounded top corners. */
-    val tabFill: Color = Color(0xFFB0D0F0),
-    val tabText: Color = Color(0xFF0A1A3A),
-    val tabFillCurrent: Color = Color(0xFFDCEBFB),
+    val tabFill: Color = Color(0xFF16161A),
+    val tabText: Color = Color(0xFFBCBCC4),
+    val tabFillCurrent: Color = Color(0xFF26262C),
 
-    val channelColumn: Color = Color(0xFF122A63),
-    val channelNumber: Color = Color(0xFFF7C818),
+    val channelColumn: Color = Color(0xFF16161A),
+    val channelNumber: Color = Color(0xFF85858F),
     val channelName: Color = Color.White,
 
     val infoTitle: Color = Color.White,
-    val infoDetail: Color = Color(0xFFB8CCE8),
+    val infoDetail: Color = Color(0xFFBCBCC4),
     val clock: Color = Color.White,
 
     /** The vertical line marking the current moment across the grid. */
-    val nowLine: Color = Color(0xFFFF4040),
+    val nowLine: Color = Color(0xFFE50914),
 
     // ---------------------------------------------------------------- layout
     /** TV-safe border, as a fraction of each edge. */
@@ -80,25 +85,25 @@ data class GuideTheme(
     /** How much time the grid shows at once. */
     val windowHours: Int = 2,
 
-    val rowHeight: Dp = 46.dp,
-    val rowGap: Dp = 3.dp,
-    val channelColumnWidth: Dp = 110.dp,
+    val rowHeight: Dp = 44.dp,
+    val rowGap: Dp = 4.dp,
+    val channelColumnWidth: Dp = 120.dp,
     val timeHeaderHeight: Dp = 26.dp,
-    val cellCorner: Dp = 4.dp,
+    val cellCorner: Dp = 6.dp,
     /** How deep the triangular notch cuts into a cell that runs past the window edge. */
-    val notchDepth: Dp = 10.dp,
+    val notchDepth: Dp = 8.dp,
     /** Narrowest a cell may be drawn, so a programme clipped at the edge stays readable. */
     val cellMinWidth: Dp = 26.dp,
-    val cellPadding: Dp = 8.dp,
+    val cellPadding: Dp = 10.dp,
 
     /**
      * Height of the whole upper section: info panel and preview window. Sized so that five rows
      * and the button bar fit under it inside the safe area of a 960 x 540 dp screen.
      */
-    val infoPanelHeight: Dp = 160.dp,
+    val infoPanelHeight: Dp = 168.dp,
     /** The preview window on the right of the info panel. 16:9. */
-    val previewWidth: Dp = 224.dp,
-    val previewHeight: Dp = 126.dp,
+    val previewWidth: Dp = 264.dp,
+    val previewHeight: Dp = 148.dp,
 
     // ---------------------------------------------------------------- type
     val fontFamily: FontFamily = FontFamily.SansSerif,
@@ -106,21 +111,21 @@ data class GuideTheme(
     val sectionSize: TextUnit = 13.sp,
     val detailSize: TextUnit = 14.sp,
     val clockSize: TextUnit = 16.sp,
-    val cellTextSize: TextUnit = 13.sp,
-    val channelNumberSize: TextUnit = 17.sp,
+    val cellTextSize: TextUnit = 12.sp,
+    val channelNumberSize: TextUnit = 11.sp,
     val channelNameSize: TextUnit = 12.sp,
-    val tabTextSize: TextUnit = 13.sp,
+    val tabTextSize: TextUnit = 12.sp,
     val titleWeight: FontWeight = FontWeight.Bold,
     /** Half-width of the dark outline drawn behind cell text, in dp. */
-    val textOutlineWidth: Dp = 1.5.dp,
+    val textOutlineWidth: Dp = 0.dp,
     /** Cell titles wrap to at most this many lines before being truncated with an ellipsis. */
     val cellMaxLines: Int = 2,
 
     // ---------------------------------------------------------------- banner
     val bannerHeight: Dp = 118.dp,
-    val bannerBackground: Color = Color(0xE60E2154),
-    val bannerProgress: Color = Color(0xFFF7C818),
-    val bannerProgressTrack: Color = Color(0xFF2A4A94),
+    val bannerBackground: Color = Color(0xE6101014),
+    val bannerProgress: Color = Color(0xFFE50914),
+    val bannerProgressTrack: Color = Color(0x33FFFFFF),
     /** How long the channel banner stays on screen after a channel change. */
     val bannerVisibleMillis: Long = 4_000L,
 
@@ -130,27 +135,27 @@ data class GuideTheme(
      * 2000s cable guide was a vertical gradient — flat colour is what makes a screen look like a
      * web page instead of a set-top box. Zero turns the gradients off.
      */
-    val gradientLift: Float = 0.22f,
+    val gradientLift: Float = 0f,
     /** How much darker the bottom of a fill is than its base colour. */
-    val gradientDrop: Float = 0.18f,
+    val gradientDrop: Float = 0f,
     /** The one-pixel light edge along the top and left of a raised element. */
-    val bevelLight: Color = Color(0x66FFFFFF),
+    val bevelLight: Color = Color.Transparent,
     /** The one-pixel dark edge along the bottom and right. */
-    val bevelDark: Color = Color(0x99000000),
+    val bevelDark: Color = Color.Transparent,
     /** The glassy band across the top half of tabs and the highlight, as on a DirecTV box. */
-    val gloss: Color = Color(0x40FFFFFF),
+    val gloss: Color = Color.Transparent,
     /** The hard drop shadow behind headings and cell text. */
-    val textShadow: Color = Color(0xCC000000),
+    val textShadow: Color = Color.Transparent,
     val textShadowOffset: Dp = 1.5.dp,
     /** Opacity of the CRT scanlines laid over the menu screens. Zero turns them off. */
-    val scanlineAlpha: Float = 0.10f,
+    val scanlineAlpha: Float = 0f,
     /** Vertical pitch of the scanlines. */
     val scanlinePitch: Dp = 3.dp,
     /** The bar the header sits on: a darker navy so the page background reads as "behind" it. */
-    val chromeBar: Color = Color(0xFF0A1A46),
-    val chromeBarEdge: Color = Color(0xFF3A5AA8),
+    val chromeBar: Color = Color(0xFF16161A),
+    val chromeBarEdge: Color = Color(0x1FFFFFFF),
     /** The thin gold rule under the header, the Comcast i-Guide's signature line. */
-    val chromeRule: Color = Color(0xFFE0B020),
+    val chromeRule: Color = Color(0xFFE50914),
     /**
      * The coloured key badges on the bottom button bar. Cable boxes labelled their shortcut
      * buttons A, B and C in red, green and yellow; the bar reuses the same colours so a viewer
@@ -163,7 +168,7 @@ data class GuideTheme(
     /** Height of the bottom button bar. */
     val buttonBarHeight: Dp = 34.dp,
     /** The translucent mouse toolbar over full-screen video. */
-    val mouseBarBackground: Color = Color(0xD0081438),
+    val mouseBarBackground: Color = Color(0xD0101014),
 ) {
     val windowMillis: Long get() = windowHours * 60L * 60L * 1000L
 

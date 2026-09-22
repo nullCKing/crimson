@@ -193,6 +193,8 @@ data class FavoriteCategoryEntity(
         Index(value = ["name"]),
         Index(value = ["titleKey"]),
         Index(value = ["titleKeyAlt"]),
+        Index(value = ["imdbVotes"]),
+        Index(value = ["added"]),
     ],
 )
 data class VodEntity(
@@ -213,8 +215,18 @@ data class VodEntity(
     val titleKey: String = "",
     /** The second reading of a name that ends in a number; see `TitleMatcher.variants`. */
     val titleKeyAlt: String? = null,
-    /** The year the name carried, if it carried one. */
+    /** The year the name carried, if it carried one; IMDb's year once the title is matched. */
     val titleYear: Int? = null,
+    /** When the provider added it, epoch millis. */
+    val added: Long? = null,
+    /** IMDb genres as `,Crime,Drama,` — see [com.crimson.core.catalog.Genres]. Null until matched. */
+    val genres: String? = null,
+    val imdbRating: Float? = null,
+    /** How many people rated it on IMDb: the popularity measure every "top" row sorts on. */
+    val imdbVotes: Int? = null,
+    /** A dub or a copy labelled for another language's audience; kept out of the browsing rows. */
+    val isForeign: Boolean = false,
+    val isAdult: Boolean = false,
 )
 
 /** A series in the provider's catalogue, cached for the same reasons as [VodEntity]. */
@@ -225,6 +237,8 @@ data class VodEntity(
         Index(value = ["name"]),
         Index(value = ["titleKey"]),
         Index(value = ["titleKeyAlt"]),
+        Index(value = ["imdbVotes"]),
+        Index(value = ["added"]),
     ],
 )
 data class SeriesEntity(
@@ -240,5 +254,64 @@ data class SeriesEntity(
     val titleKey: String = "",
     val titleKeyAlt: String? = null,
     val titleYear: Int? = null,
+    val backdrop: String? = null,
+    /** The provider's last-modified time, epoch millis, which moves when episodes are added. */
+    val added: Long? = null,
+    val genres: String? = null,
+    val imdbRating: Float? = null,
+    val imdbVotes: Int? = null,
+    val isForeign: Boolean = false,
+    val isAdult: Boolean = false,
 )
+
+/** A film or series the viewer added to My List. */
+@Entity(tableName = "my_list", primaryKeys = ["kind", "itemId"])
+data class MyListEntity(
+    /** `MOVIE` or `SERIES`, a [com.crimson.core.catalog.TitleKind] name. */
+    val kind: String,
+    val itemId: Long,
+    val name: String,
+    val image: String?,
+    val addedAt: Long = System.currentTimeMillis(),
+)
+
+/**
+ * How far into a film or an episode the viewer got.
+ *
+ * Keyed as `M:<stream id>` or `E:<episode id>`. An episode also records its series, so Continue
+ * Watching can show one card per series — the episode the viewer is on — rather than one per
+ * episode they ever started.
+ */
+@Entity(
+    tableName = "watch_progress",
+    indices = [Index(value = ["updatedAt"]), Index(value = ["seriesId"])],
+)
+data class WatchProgressEntity(
+    @PrimaryKey val key: String,
+    /** `MOVIE` or `EPISODE`. */
+    val kind: String,
+    val itemId: Long,
+    val seriesId: Long? = null,
+    val title: String,
+    /** "S2:E5 · The One Where…" for an episode; null for a film. */
+    val subtitle: String? = null,
+    val image: String? = null,
+    val backdrop: String? = null,
+    val positionMs: Long,
+    val durationMs: Long,
+    val updatedAt: Long = System.currentTimeMillis(),
+    val containerExtension: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+) {
+    val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+
+    /** Finished, for the purpose of "continue watching": the credits are rolling. */
+    val isFinished: Boolean get() = durationMs > 0 && positionMs >= durationMs * 0.94
+
+    companion object {
+        fun movieKey(streamId: Long) = "M:$streamId"
+        fun episodeKey(episodeId: Long) = "E:$episodeId"
+    }
+}
 

@@ -2,12 +2,21 @@ package com.crimson.player
 
 import kotlinx.coroutines.flow.StateFlow
 
-/** A channel the player can tune to. */
+/**
+ * Something the player can play: a live channel, or a film or an episode.
+ *
+ * The name is RetroGuide's, from when a channel was the only thing there was to play. [isLive]
+ * is what changes the player's behaviour: a live stream that ends has failed and is reconnected,
+ * a film that ends has finished.
+ */
 data class PlayableChannel(
     val streamId: Long,
     val number: Int,
     val name: String,
     val url: String,
+    val isLive: Boolean = true,
+    /** Where to start a film or episode, for resume. Ignored for live. */
+    val startPositionMs: Long = 0L,
 )
 
 /** What the UI needs to know about playback. */
@@ -21,6 +30,10 @@ data class PlaybackState(
     val error: String? = null,
     /** Milliseconds from tune to first rendered frame, for the performance measurements. */
     val timeToFirstFrameMs: Long? = null,
+    /** True when paused by the viewer, as opposed to waiting on the network. */
+    val isPaused: Boolean = false,
+    /** A film or episode reached its end. */
+    val isEnded: Boolean = false,
 )
 
 /**
@@ -49,4 +62,21 @@ interface PlayerController {
     fun stop()
 
     fun release()
+
+    /** Pause and resume, for films and episodes. On live they pause the picture, as a DVR would not. */
+    fun togglePause()
+
+    fun pause()
+
+    fun resume()
+
+    /** Seek relative to the current position, clamped to the media. No-op on live. */
+    fun seekBy(deltaMs: Long)
+
+    fun seekTo(positionMs: Long)
+
+    /** Current position and duration; the duration is 0 until known and for live streams. */
+    fun positionMs(): Long
+
+    fun durationMs(): Long
 }

@@ -285,8 +285,10 @@ object XtreamParser {
                 var icon: String? = null
                 var rating: String? = null
                 var extension: String? = null
+                var added: Long? = null
                 while (json.hasNext()) {
                     when (json.nextName()) {
+                        "added" -> added = json.nextString()?.toLongOrNull()
                         "stream_id", "vod_id" -> streamId = json.nextLong()
                         "name" -> name = json.nextString().orEmpty()
                         "category_id" -> categoryId = json.nextString()
@@ -299,7 +301,7 @@ object XtreamParser {
                 json.endObject()
                 seen++
                 if (streamId != 0L && name.isNotBlank()) {
-                    onVod(com.crimson.core.model.RawVodStream(streamId, name, categoryId, icon, rating, extension))
+                    onVod(com.crimson.core.model.RawVodStream(streamId, name, categoryId, icon, rating, extension, added))
                 }
             }
             json.endArray()
@@ -320,6 +322,10 @@ object XtreamParser {
         var cover: String? = null
         var backdrop: String? = null
         var extension: String? = null
+        var genre: String? = null
+        var durationSecs: Int? = null
+        var mpaa: String? = null
+        var trailer: String? = null
 
         JsonReader(reader).use { json ->
             if (json.peek() != JsonReader.Token.BEGIN_OBJECT) {
@@ -335,7 +341,11 @@ object XtreamParser {
                                 when (json.nextName()) {
                                     "name" -> name = json.nextString().orEmpty()
                                     "description", "plot" -> desc = json.nextString()
-                                    "duration", "duration_secs" -> duration = json.nextString()
+                                    "duration" -> duration = json.nextString()
+                                    "duration_secs" -> durationSecs = json.nextString()?.toIntOrNull()
+                                    "genre" -> genre = json.nextString()
+                                    "mpaa_rating", "mpaa", "age" -> json.nextString()?.takeIf { it.isNotBlank() }?.let { mpaa = it }
+                                    "youtube_trailer" -> trailer = json.nextString()
                                     "releasedate", "release_date" -> releaseDate = json.nextString()
                                     "rating" -> rating = json.nextString()
                                     "cast", "actors" -> cast = json.nextString()
@@ -388,6 +398,10 @@ object XtreamParser {
             coverUrl = cover,
             backdropUrl = backdrop,
             containerExtension = extension,
+            genre = genre,
+            durationSecs = durationSecs,
+            mpaa = mpaa,
+            trailer = trailer,
         )
     }
 
@@ -413,8 +427,14 @@ object XtreamParser {
                 var plot: String? = null
                 var rating: String? = null
                 var releaseDate: String? = null
+                var backdrop: String? = null
+                var lastModified: Long? = null
+                var genre: String? = null
                 while (json.hasNext()) {
                     when (json.nextName()) {
+                        "backdrop_path" -> backdrop = firstString(json)
+                        "last_modified" -> lastModified = json.nextString()?.toLongOrNull()
+                        "genre" -> genre = json.nextString()
                         "series_id" -> seriesId = json.nextLong()
                         "name" -> name = json.nextString().orEmpty()
                         "category_id" -> categoryId = json.nextString()
@@ -428,7 +448,7 @@ object XtreamParser {
                 json.endObject()
                 seen++
                 if (seriesId != 0L && name.isNotBlank()) {
-                    onSeries(com.crimson.core.model.RawSeries(seriesId, name, categoryId, cover, plot, rating, releaseDate))
+                    onSeries(com.crimson.core.model.RawSeries(seriesId, name, categoryId, cover, plot, rating, releaseDate, backdrop, lastModified, genre))
                 }
             }
             json.endArray()
@@ -441,6 +461,12 @@ object XtreamParser {
         var name = ""
         var cover: String? = null
         var plot: String? = null
+        var backdrop: String? = null
+        var genre: String? = null
+        var releaseDate: String? = null
+        var cast: String? = null
+        var director: String? = null
+        var rating: String? = null
         val seasons = ArrayList<Int>()
         val episodes = LinkedHashMap<Int, ArrayList<com.crimson.core.model.RawEpisode>>()
 
@@ -459,6 +485,12 @@ object XtreamParser {
                                     "name" -> name = json.nextString().orEmpty()
                                     "cover" -> cover = json.nextString()
                                     "plot" -> plot = json.nextString()
+                                    "backdrop_path" -> backdrop = firstString(json)
+                                    "genre" -> genre = json.nextString()
+                                    "releaseDate", "release_date" -> releaseDate = json.nextString()
+                                    "cast" -> cast = json.nextString()
+                                    "director" -> director = json.nextString()
+                                    "rating" -> rating = json.nextString()
                                     else -> json.skipValue()
                                 }
                             }
@@ -500,18 +532,32 @@ object XtreamParser {
                                         var epNum = 0
                                         var epTitle = ""
                                         var ext: String? = null
+                                        val epInfo = EpisodeInfo()
                                         while (json.hasNext()) {
                                             when (json.nextName()) {
                                                 "id" -> epId = json.nextLong()
                                                 "episode_num" -> epNum = json.nextInt()
                                                 "title" -> epTitle = json.nextString().orEmpty()
                                                 "container_extension" -> ext = json.nextString()
+                                                "info" -> readEpisodeInfo(json, epInfo)
                                                 else -> json.skipValue()
                                             }
                                         }
                                         json.endObject()
                                         if (epId != 0L) {
-                                            list.add(com.crimson.core.model.RawEpisode(epId, seasonNum, epNum, epTitle, ext))
+                                            list.add(
+                                                com.crimson.core.model.RawEpisode(
+                                                    id = epId,
+                                                    season = seasonNum,
+                                                    episodeNum = epNum,
+                                                    title = epTitle,
+                                                    containerExtension = ext,
+                                                    info = epInfo.plot,
+                                                    image = epInfo.image,
+                                                    durationSecs = epInfo.durationSecs,
+                                                    releaseDate = epInfo.releaseDate,
+                                                )
+                                            )
                                         }
                                     }
                                     json.endArray()
@@ -535,6 +581,51 @@ object XtreamParser {
             plot = plot,
             seasons = seasons,
             episodes = episodes,
+            backdrop = backdrop,
+            genre = genre,
+            releaseDate = releaseDate,
+            cast = cast,
+            director = director,
+            rating = rating,
         )
+    }
+
+    private class EpisodeInfo(
+        var plot: String? = null,
+        var image: String? = null,
+        var durationSecs: Int? = null,
+        var releaseDate: String? = null,
+    )
+
+    /** An episode's `info` object; some panels send an empty array instead of an object. */
+    private fun readEpisodeInfo(json: JsonReader, into: EpisodeInfo) {
+        if (json.peek() != JsonReader.Token.BEGIN_OBJECT) { json.skipValue(); return }
+        json.beginObject()
+        while (json.hasNext()) {
+            when (json.nextName()) {
+                "plot", "description" -> into.plot = json.nextString()?.takeIf { it.isNotBlank() }
+                "movie_image", "cover_big" -> into.image = json.nextString()?.takeIf { it.isNotBlank() }
+                "duration_secs" -> into.durationSecs = json.nextString()?.toIntOrNull()
+                "releasedate", "release_date", "air_date" -> into.releaseDate = json.nextString()
+                else -> json.skipValue()
+            }
+        }
+        json.endObject()
+    }
+
+    /** A value that panels send either as a string or as an array of strings; the first wins. */
+    private fun firstString(json: JsonReader): String? {
+        if (json.peek() != JsonReader.Token.BEGIN_ARRAY) return json.nextString()?.takeIf { it.isNotBlank() }
+        var first: String? = null
+        json.beginArray()
+        while (json.hasNext()) {
+            if (first == null && json.peek() != JsonReader.Token.BEGIN_ARRAY && json.peek() != JsonReader.Token.BEGIN_OBJECT) {
+                first = json.nextString()?.takeIf { it.isNotBlank() }
+            } else {
+                json.skipValue()
+            }
+        }
+        json.endArray()
+        return first
     }
 }
