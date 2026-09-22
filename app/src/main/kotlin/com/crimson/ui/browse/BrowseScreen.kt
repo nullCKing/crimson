@@ -87,7 +87,14 @@ class BrowseActions(
     val onLoadMore: () -> Unit,
 )
 
-/** Remembered across visits to a page: where it was scrolled to and which card had focus. */
+/**
+ * Remembered across visits to a page: where it was scrolled to and which card had focus.
+ *
+ * Marked stable because its fields are bookkeeping, not display state: nothing should recompose
+ * when they change, and without the annotation every row's callbacks — which capture this —
+ * would be rebuilt, and every visible row recomposed, each time the spotlight moved.
+ */
+@androidx.compose.runtime.Stable
 class BrowseMemory {
     val list = LazyListState()
     var lastKey: String? = null
@@ -154,7 +161,10 @@ fun BrowseScreen(
     Box(Modifier.fillMaxSize().background(Crimson.Background)) {
         val hero = state.hero
         val shown = if (heroMode && hero != null && spotlight.key != hero.key) Spotlight(key = hero.key, title = hero.name, poster = hero.poster, backdrop = hero.backdrop, rating = hero.rating, year = hero.year, genres = hero.genres) else spotlight
-        if (shown.isLive && shown.backdrop == null) {
+        val game = (shown.tile as? com.crimson.ui.components.GameTile)?.event
+        if (game != null) {
+            GameBackdrop(game)
+        } else if (shown.isLive && shown.backdrop == null) {
             LiveBackdrop(shown.logo)
         } else {
             Backdrop(url = shown.backdrop, fallback = shown.poster, widthFraction = 0.7f, heightFraction = if (heroMode) 0.8f else 0.66f)
@@ -358,5 +368,36 @@ private fun StatusPill(text: String, modifier: Modifier = Modifier) {
         com.crimson.ui.components.Spinner(size = 14.dp, stroke = 2.dp)
         Spacer(Modifier.width(8.dp))
         Text(text, style = CrimsonType.Caption.copy(color = Crimson.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 11.sp))
+    }
+}
+
+/** For a game: the two teams' colours meeting in the corner, their logos large and dim. */
+@Composable
+private fun GameBackdrop(event: com.crimson.core.sports.SportsEvent) {
+    fun tint(hex: String?): Color = runCatching {
+        Color(android.graphics.Color.parseColor("#" + hex!!.take(6)))
+    }.getOrDefault(Crimson.RedDeep)
+    val away = tint(event.away?.color)
+    val home = tint(event.home?.color)
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .fillMaxWidth(0.7f)
+                .fillMaxSize(0.8f)
+                .background(Brush.linearGradient(listOf(away.copy(alpha = 0.55f), home.copy(alpha = 0.55f))))
+        ) {
+            Row(
+                Modifier.align(Alignment.Center).padding(start = 120.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                listOfNotNull(event.away?.logoUrl, event.home?.logoUrl).forEachIndexed { i, logo ->
+                    if (i > 0) Spacer(Modifier.width(40.dp))
+                    AsyncImage(logo, null, contentScale = ContentScale.Fit, modifier = Modifier.size(150.dp), alpha = 0.5f)
+                }
+            }
+            Box(Modifier.fillMaxSize().background(Crimson.ScrimLeft))
+            Box(Modifier.fillMaxSize().background(Crimson.ScrimBottom))
+        }
     }
 }

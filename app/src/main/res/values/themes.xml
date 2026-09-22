@@ -2,12 +2,12 @@
 <resources>
     <!--
       A bare full-screen theme. Everything visible is drawn by Compose and coloured from
-      GuideTheme.kt; this only has to stop the system drawing an action bar or a light background
+      ui/theme/Crimson.kt; this only has to stop the system drawing an action bar or a light background
       behind the video for the instant before the first frame arrives.
     -->
     <style name="Theme.Crimson" parent="android:Theme.Material.NoActionBar.Fullscreen">
-        <item name="android:windowBackground">@color/navy_deep</item>
-        <item name="android:colorBackground">@color/navy_deep</item>
+        <item name="android:windowBackground">@color/crimson_background</item>
+        <item name="android:colorBackground">@color/crimson_background</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowFullscreen">true</item>

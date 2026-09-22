@@ -157,16 +157,18 @@ fun Backdrop(
     dim: Float = 0f,
 ) {
     Box(modifier.fillMaxSize()) {
-        Crossfade(
-            targetState = url ?: fallback,
-            animationSpec = tween(500),
-            label = "backdrop",
-            modifier = Modifier
+        Box(
+            Modifier
                 .align(Alignment.TopEnd)
                 .fillMaxWidth(widthFraction)
                 .fillMaxHeight(heightFraction),
-        ) { image ->
-            Box(Modifier.fillMaxSize()) {
+        ) {
+            Crossfade(
+                targetState = url ?: fallback,
+                animationSpec = tween(350),
+                label = "backdrop",
+                modifier = Modifier.fillMaxSize(),
+            ) { image ->
                 if (!image.isNullOrBlank()) {
                     AsyncImage(
                         model = image,
@@ -176,15 +178,19 @@ fun Backdrop(
                         modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 1f - dim },
                     )
                 }
-                Box(Modifier.fillMaxSize().background(Crimson.ScrimLeft))
-                Box(Modifier.fillMaxSize().background(Crimson.ScrimBottom))
             }
+            // The scrims once, over both images of a crossfade rather than once per image: a
+            // transition then costs two image draws instead of two images and four gradients.
+            Box(Modifier.fillMaxSize().background(Crimson.ScrimLeft))
+            Box(Modifier.fillMaxSize().background(Crimson.ScrimBottom))
         }
         // A faint red bloom in the top-left corner: the one flourish, and the one thing that makes
-        // an empty page look intentional rather than unloaded.
+        // an empty page look intentional rather than unloaded. Sized to the corner it lights, so
+        // it is not a full-screen blend redrawn on every frame.
         Box(
             Modifier
-                .fillMaxSize()
+                .fillMaxWidth(0.55f)
+                .fillMaxHeight(0.8f)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(Crimson.RedDeep.copy(alpha = 0.28f), Color.Transparent),

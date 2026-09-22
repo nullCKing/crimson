@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds RetroGuide and verifies it on an Android TV emulator or a real Fire TV Stick.
+    Builds Crimson and verifies it on an Android TV emulator or a real Fire TV Stick.
 
 .DESCRIPTION
     Everything the development container could not do, in one command. It will:
@@ -28,6 +28,10 @@
 .PARAMETER SkipSdkInstall
     Assume the SDK is already complete.
 
+.PARAMETER Reset
+    Clear the app's data before the run. Automatic on an emulator. On a real device it deletes
+    every profile, which is why it has to be asked for; without it the run expects a fresh install.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools\verify-on-device.ps1
 #>
@@ -38,7 +42,11 @@ param(
     [int]$ApiLevel = 30,
     [switch]$SkipBuild,
     [switch]$SkipSdkInstall,
-    [switch]$KeepEmulator
+    [switch]$KeepEmulator,
+    # Clears the app's data first, so the run starts at the first-profile screen it expects.
+    # Always done on an emulator; on a real device only when asked, since it deletes the
+    # viewer's profiles.
+    [switch]$Reset
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,6 +56,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $screenshotDir = Join-Path $root "screenshots"
 $reportDir = Join-Path $root "reports"
 $reportFile = Join-Path $reportDir "device-verification.md"
+# The AVD name is RetroGuide's, so a machine that has built both reuses one emulator image.
 $avdName = "retroguide_tv_$ApiLevel"
 $mockPort = 8080
 
@@ -246,6 +255,11 @@ if ($LASTEXITCODE -ne 0) { throw "adb install failed" }
 
 $package = if ($apk.Name -like "*debug*") { "com.crimson.debug" } else { "com.crimson" }
 
+if ($Reset -or $serial -like "emulator-*") {
+    Say "Clearing $package's data so the run starts at the first-profile screen"
+    & $adb -s $serial shell pm clear $package | Out-Null
+}
+
 Say "Launching"
 & $adb -s $serial shell monkey -p $package -c android.intent.category.LEANBACK_LAUNCHER 1 | Out-Null
 Start-Sleep -Seconds 6
@@ -256,8 +270,8 @@ function Shot($name) {
     # Captured on the device and pulled, not redirected: a PowerShell `>` decodes a native
     # command's output as text and re-encodes it, which turns a PNG into UTF-16 garbage.
     $path = Join-Path $screenshotDir "$name.png"
-    & $adb -s $serial shell screencap -p /sdcard/retroguide_shot.png | Out-Null
-    & $adb -s $serial pull /sdcard/retroguide_shot.png "$path" | Out-Null
+    & $adb -s $serial shell screencap -p /sdcard/crimson_shot.png | Out-Null
+    & $adb -s $serial pull /sdcard/crimson_shot.png "$path" | Out-Null
     Write-Host "    screenshot: $name.png"
 }
 
@@ -281,97 +295,108 @@ $imes = @(& $adb -s $serial shell ime list -s | ForEach-Object { $_.Trim() } | W
 foreach ($ime in $imes) { & $adb -s $serial shell ime disable $ime | Out-Null }
 Start-Sleep -Seconds 1
 
-Say "Signing in against the mock server"
-Shot "01_login"
+Say "Creating the first profile against the mock server"
+Shot "01_welcome"
+TypeText "Tester"
+Key "KEYCODE_DPAD_DOWN"
 TypeText "http://$serverForApp"
 Key "KEYCODE_DPAD_DOWN"
 TypeText "testuser"
-Key "KEYCODE_DPAD_DOWN"
+Key "KEYCODE_DPAD_RIGHT"
 TypeText "testpass"
-Key "KEYCODE_DPAD_CENTER"
+# Down from the password lands on Save, the only button on a first profile.
+Key "KEYCODE_DPAD_DOWN"
+Key "KEYCODE_DPAD_CENTER" 1 4
+Shot "02_whos_watching"
 
-Say "Waiting for the import (up to five minutes)"
+Say "Choosing the profile and waiting for channels, guide and library (up to five minutes)"
+& $adb -s $serial logcat -c | Out-Null
+Key "KEYCODE_DPAD_CENTER"
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Seconds 5
-    if ($i % 6 -eq 0) { Shot "02_importing_$i" }
+    if ($i % 6 -eq 0) { Shot "03_loading_$i" }
+    $enriched = & $adb -s $serial logcat -d -s CrimsonLibrary:I | Select-String -Pattern "enriched (\d+) films and (\d+) series"
+    if ($enriched) {
+        Note "- Library joined to the title index: $($enriched[-1].Matches[0].Groups[1].Value) films, $($enriched[-1].Matches[0].Groups[2].Value) series"
+        break
+    }
 }
-Shot "03_watching"
+Start-Sleep -Seconds 4
+Shot "04_home_billboard"
 
-Say "Recording peak memory during and after the import"
+Say "Recording memory after the import"
 $meminfo = & $adb -s $serial shell dumpsys meminfo $package
 $meminfoPath = Join-Path $reportDir "meminfo.txt"
 $meminfo | Set-Content $meminfoPath
 $totalPss = ($meminfo | Select-String -Pattern "TOTAL PSS:\s+(\d+)" | Select-Object -First 1)
 if ($totalPss) {
     $kb = [int]$totalPss.Matches[0].Groups[1].Value
-    Note "- Peak memory (TOTAL PSS): $([math]::Round($kb / 1024, 1)) MB"
+    Note "- Memory after the import (TOTAL PSS): $([math]::Round($kb / 1024, 1)) MB"
 } else {
-    Note "- Peak memory: see reports/meminfo.txt"
+    Note "- Memory: see reports/meminfo.txt"
 }
 
-Say "Opening the guide and driving it with the D-pad"
+Say "Frame timing while scrolling the Home rows"
 & $adb -s $serial shell dumpsys gfxinfo $package reset | Out-Null
-Key "KEYCODE_DPAD_CENTER"
-Start-Sleep -Seconds 3
-Shot "04_guide"
-
-Key "KEYCODE_DPAD_DOWN" 6 0.25
-Shot "05_guide_scrolled_down"
-Key "KEYCODE_DPAD_RIGHT" 6 0.25
-Shot "06_guide_scrolled_right"
-Key "KEYCODE_DPAD_LEFT" 3 0.25
-Shot "07_guide_back_left"
-Key "KEYCODE_MEDIA_FAST_FORWARD" 2 0.5
-Shot "08_guide_paged_forward"
-Key "KEYCODE_MEDIA_REWIND" 2 0.5
-Shot "09_guide_paged_back"
-
-Say "Selecting a future programme"
-Key "KEYCODE_MEDIA_FAST_FORWARD" 1 0.5
-Key "KEYCODE_DPAD_CENTER"
-Start-Sleep -Seconds 2
-Shot "10_future_program_dialog"
-Key "KEYCODE_BACK"
-# Leave and reopen the guide so it lands on the current half hour and the playing channel, which
-# is where the tune below has to happen. Paging back would need an unknown number of presses:
-# Right skips whole programmes, so the window can be many hours ahead by now.
-Key "KEYCODE_BACK" 1 1.0
-Key "KEYCODE_DPAD_CENTER" 1 2.0
-
-Say "Frame timing while scrolling the guide"
-& $adb -s $serial shell dumpsys gfxinfo $package reset | Out-Null
-Key "KEYCODE_DPAD_DOWN" 25 0.12
+Key "KEYCODE_DPAD_DOWN" 3 0.6
+Shot "05_home_rows"
+Key "KEYCODE_DPAD_RIGHT" 6 0.2
+Key "KEYCODE_DPAD_DOWN" 20 0.25
+Shot "06_home_deep"
 $gfx = & $adb -s $serial shell dumpsys gfxinfo $package
 $gfxPath = Join-Path $reportDir "gfxinfo.txt"
 $gfx | Set-Content $gfxPath
 $total = ($gfx | Select-String -Pattern "Total frames rendered: (\d+)" | Select-Object -First 1)
 $janky = ($gfx | Select-String -Pattern "Janky frames: (\d+) \(([\d.]+)%\)" | Select-Object -First 1)
 if ($total -and $janky) {
-    Note "- Frames: $($total.Matches[0].Groups[1].Value) rendered, $($janky.Matches[0].Groups[1].Value) janky ($($janky.Matches[0].Groups[2].Value)%)"
+    Note "- Home rows: $($total.Matches[0].Groups[1].Value) frames rendered, $($janky.Matches[0].Groups[1].Value) janky ($($janky.Matches[0].Groups[2].Value)%)"
 } else {
     Note "- Frame timing: see reports/gfxinfo.txt"
 }
 
-Say "Tuning a channel and checking the banner"
-Key "KEYCODE_DPAD_CENTER"
-# The banner stays up for four seconds; capture it in the middle of that, then after it has gone.
-Start-Sleep -Seconds 2
-Shot "11_banner_after_tune"
-Start-Sleep -Seconds 5
-Shot "12_banner_hidden"
+Say "A film: details, play, seek, back, resume"
+Key "KEYCODE_DPAD_CENTER" 1 3
+Shot "07_details"
+Key "KEYCODE_DPAD_CENTER" 1 6
+Shot "08_playing"
+Key "KEYCODE_DPAD_RIGHT" 3 0.4
+Key "KEYCODE_DPAD_CENTER" 1 1
+Shot "09_paused_controls"
+Key "KEYCODE_BACK" 1 2
+Shot "10_details_resume"
+Key "KEYCODE_BACK" 1 2
+Key "KEYCODE_BACK" 1 2
+Shot "11_home_continue_watching"
 
-Say "Channel up and down in full screen"
-Key "KEYCODE_DPAD_UP" 1 3
-Shot "13_channel_up"
+Say "Live TV: lineup, preview, full screen, zapping, guide"
+Key "KEYCODE_DPAD_UP" 1 0.5
+Key "KEYCODE_DPAD_RIGHT" 3 0.3
+Key "KEYCODE_DPAD_CENTER" 1 3
+Shot "12_live_tv"
 Key "KEYCODE_DPAD_DOWN" 1 3
-Shot "14_channel_down"
-
-Say "Last channel on Play/Pause"
+Shot "13_live_preview"
+Key "KEYCODE_DPAD_CENTER"
+Start-Sleep -Seconds 2
+Shot "14_live_banner"
+Key "KEYCODE_DPAD_UP" 1 3
+Shot "15_channel_up"
+Key "KEYCODE_DPAD_DOWN" 1 3
 Key "KEYCODE_MEDIA_PLAY_PAUSE" 1 3
-Shot "15_last_channel"
+Shot "16_last_channel"
+Key "KEYCODE_DPAD_CENTER" 1 3
+Shot "17_guide"
+Key "KEYCODE_DPAD_DOWN" 6 0.25
+Key "KEYCODE_DPAD_RIGHT" 4 0.25
+Shot "18_guide_moved"
+Key "KEYCODE_MEDIA_FAST_FORWARD" 1 0.5
+Key "KEYCODE_DPAD_CENTER" 1 2
+Shot "19_future_program_dialog"
+Key "KEYCODE_BACK" 1 1
+Key "KEYCODE_BACK" 1 1
+Key "KEYCODE_BACK" 1 2
 
 Say "Time to first frame, from logcat"
-$logcat = & $adb -s $serial logcat -d -s RetroPlayer:I
+$logcat = & $adb -s $serial logcat -d -s CrimsonPlayer:I
 $logcatPath = Join-Path $reportDir "player-log.txt"
 $logcat | Set-Content $logcatPath
 $frames = @($logcat | Select-String -Pattern "first frame for .* in (\d+) ms")
@@ -385,26 +410,28 @@ if ($frames.Count -gt 0) {
     Note "- Time to first frame: $($times.Count) tunes, average ${avg} ms, range ${min}-${max} ms"
 }
 
-Say "Settings screen and an instant filter change"
+Say "Settings and an instant filter change"
 Key "KEYCODE_MENU"
 Start-Sleep -Seconds 2
-Shot "16_settings"
-$before = Get-Date
+Shot "20_settings"
+# Rail: Profile, Live TV. Right steps into the Live TV section; its first row is the first country.
+Key "KEYCODE_DPAD_DOWN" 1 0.4
+Key "KEYCODE_DPAD_RIGHT" 1 0.4
 Key "KEYCODE_DPAD_DOWN" 3 0.2
+$before = Get-Date
 Key "KEYCODE_DPAD_CENTER"
 Start-Sleep -Milliseconds 500
 $elapsed = (Get-Date) - $before
-Shot "17_settings_filter_changed"
+Shot "21_settings_filter_changed"
 Note "- Filter toggle round trip (includes key delays): $([math]::Round($elapsed.TotalMilliseconds)) ms"
-# The app times the same thing from the inside, from the toggle to the new channel list arriving.
-$applied = @(& $adb -s $serial logcat -d -s RetroGuideVM:I | Select-String -Pattern "filter change applied in (\d+) ms: (\d+) channels")
+$applied = @(& $adb -s $serial logcat -d -s CrimsonVM:I | Select-String -Pattern "filter change applied in (\d+) ms: (\d+) channels")
 if ($applied.Count -gt 0) {
     $last = $applied[-1].Matches[0]
     Note "- Filter change applied in the app: $($last.Groups[1].Value) ms, $($last.Groups[2].Value) channels after the change"
 }
+Key "KEYCODE_DPAD_CENTER"
 Key "KEYCODE_BACK"
 Start-Sleep -Seconds 2
-Shot "18_guide_after_filter_change"
 
 Say "Checking that only one stream is open"
 $connections = & $adb -s $serial shell "cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | grep -c ':1F90'"
@@ -438,9 +465,9 @@ $footer = @"
 
 ## What to look at
 
-Open the screenshots in order and compare them with ``reference/``. The things worth checking by
-eye are the ones no assertion covers: whether the deep navy reads right on a real panel, whether
-the yellow highlight is legible from a sofa, and whether the cell text is large enough at 1080p.
+Open the screenshots in order. The things worth checking by eye are the ones no assertion
+covers: whether the near-black and the red read right on a real panel, whether the white focus
+ring is obvious from a sofa, and whether the row text is large enough at 1080p.
 "@
 
 Set-Content -Path $reportFile -Value ($header + ($script:report -join "`n") + $footer)

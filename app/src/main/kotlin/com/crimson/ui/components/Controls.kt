@@ -76,9 +76,8 @@ fun Wordmark(modifier: Modifier = Modifier, size: TextUnit = 24.sp) {
 enum class ButtonStyle { PRIMARY, SECONDARY, GHOST, DANGER }
 
 /**
- * A pill button. Primary is the white "Play" of every streaming app; the others are glass. On
- * focus every style turns solid white with dark text and lifts, so there is never any doubt
- * which button Select will press.
+ * A button. Primary is crimson, the others are glass. On focus every style turns solid white with
+ * dark text and lifts, so there is never any doubt which button Select will press.
  */
 @Composable
 fun CrimsonButton(
@@ -96,7 +95,9 @@ fun CrimsonButton(
     val background by animateColorAsState(
         targetValue = when {
             focused -> Color.White
-            style == ButtonStyle.PRIMARY -> Color.White.copy(alpha = 0.92f)
+            // Red at rest, white under focus: a primary button that was white either way left
+            // the viewer unable to tell whether it or its neighbour had the cursor.
+            style == ButtonStyle.PRIMARY -> Crimson.Red
             style == ButtonStyle.DANGER -> Crimson.Red.copy(alpha = 0.18f)
             style == ButtonStyle.GHOST -> Color.Transparent
             else -> Crimson.Glass
@@ -105,7 +106,8 @@ fun CrimsonButton(
         label = "buttonBg",
     )
     val content = when {
-        focused || style == ButtonStyle.PRIMARY -> Color.Black
+        focused -> Color.Black
+        style == ButtonStyle.PRIMARY -> Color.White
         style == ButtonStyle.DANGER -> Crimson.RedBright
         else -> Crimson.TextPrimary
     }

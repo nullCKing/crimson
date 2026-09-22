@@ -293,7 +293,7 @@ private fun AvatarPicker(selected: Int, onPick: (Int) -> Unit) {
                                 },
                                 shape = RoundedCornerShape(6.dp),
                             )
-                            .tvInteractive(onSelect = { onPick(index) }, onFocus = { focused = it; if (it) onPick(index) }),
+                            .tvInteractive(onSelect = { onPick(index) }, onFocus = { focused = it }),
                     ) { Avatar(index, 38.dp) }
                 }
             }

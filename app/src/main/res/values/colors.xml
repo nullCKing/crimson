@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Only the handful of colours the Android framework needs before Compose starts drawing.
-  The guide's real palette lives in GuideTheme.kt, which is the one place to change the look.
+  Only the colour the Android framework needs before Compose starts drawing: the window
+  background, so the instant before the first frame is Crimson's near-black and not a flash of
+  something else. The real palette lives in ui/theme/Crimson.kt.
 -->
 <resources>
-    <color name="navy_deep">#FF081438</color>
-    <color name="navy">#FF0E2154</color>
+    <color name="crimson_background">#FF0A0A0C</color>
 </resources>

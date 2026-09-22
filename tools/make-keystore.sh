@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Creates the release signing keystore, once.
 #
-# Writes secrets/retroguide-release.jks and secrets/keystore.properties, both gitignored.
+# Writes secrets/crimson-release.jks and secrets/keystore.properties, both gitignored.
 #
 # THE SAME KEY MUST BE USED FOR EVERY BUILD. Android identifies an app by its package name and its
 # signing certificate together, so an APK signed with a different key will not install over an
@@ -12,9 +12,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SECRETS="$ROOT/secrets"
-KEYSTORE="$SECRETS/retroguide-release.jks"
+KEYSTORE="$SECRETS/crimson-release.jks"
 PROPS="$SECRETS/keystore.properties"
-ALIAS="${1:-retroguide}"
+ALIAS="${1:-crimson}"
 VALIDITY_DAYS=10950   # 30 years
 
 mkdir -p "$SECRETS"
@@ -44,11 +44,11 @@ keytool -genkeypair \
   -keyalg RSA -keysize 4096 \
   -validity "$VALIDITY_DAYS" \
   -storepass "$PASSWORD" -keypass "$PASSWORD" \
-  -dname "CN=RetroGuide, OU=RetroGuide, O=RetroGuide, L=, ST=, C=US"
+  -dname "CN=Crimson, OU=Crimson, O=Crimson, L=, ST=, C=US"
 
 # Gradle resolves storeFile relative to the project root.
 cat > "$PROPS" <<EOF
-storeFile=secrets/retroguide-release.jks
+storeFile=secrets/crimson-release.jks
 storePassword=$PASSWORD
 keyAlias=$ALIAS
 keyPassword=$PASSWORD

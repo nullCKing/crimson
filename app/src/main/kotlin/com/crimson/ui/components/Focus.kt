@@ -14,7 +14,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -23,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.crimson.ui.theme.Crimson
 
 /**
- * The one focus treatment every card uses: a lift, a white ring and a shadow.
+ * The one focus treatment every card uses: a lift and a white ring.
  *
  * Scale is done in the graphics layer, so a focused card grows without re-measuring the row it
  * sits in — on a Fire Stick a layout pass per focus change across a row of forty posters is the
@@ -46,7 +45,8 @@ fun Modifier.cardFocus(
             scaleX = s
             scaleY = s
         }
-        .then(if (focused) Modifier.shadow(18.dp, shape, clip = false) else Modifier)
+        // No drop shadow: a blurred elevation shadow redrawn on every frame of a scroll was the
+        // single most expensive thing on screen, and the ring and the lift read as focus without it.
         .then(if (focused) Modifier.border(ring, Crimson.FocusRing, shape) else Modifier)
 }
 

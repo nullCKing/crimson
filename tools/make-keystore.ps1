@@ -3,7 +3,7 @@
     Creates the release signing keystore, once.
 
 .DESCRIPTION
-    Writes secrets/retroguide-release.jks and secrets/keystore.properties, both gitignored.
+    Writes secrets/crimson-release.jks and secrets/keystore.properties, both gitignored.
 
     THE SAME KEY MUST BE USED FOR EVERY BUILD. Android identifies an app by its package name and
     its signing certificate together, so an APK signed with a different key will not install over
@@ -15,7 +15,7 @@
 #>
 
 param(
-    [string]$Alias = "retroguide",
+    [string]$Alias = "crimson",
     [int]$ValidityDays = 10950   # 30 years
 )
 
@@ -23,7 +23,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $secrets = Join-Path $root "secrets"
-$keystore = Join-Path $secrets "retroguide-release.jks"
+$keystore = Join-Path $secrets "crimson-release.jks"
 $propsFile = Join-Path $secrets "keystore.properties"
 
 if (-not (Test-Path $secrets)) { New-Item -ItemType Directory -Path $secrets | Out-Null }
@@ -56,13 +56,13 @@ if ($plain.Length -lt 6) { Write-Error "A keystore password must be at least 6 c
     -keyalg RSA -keysize 4096 `
     -validity $ValidityDays `
     -storepass $plain -keypass $plain `
-    -dname "CN=RetroGuide, OU=RetroGuide, O=RetroGuide, L=, ST=, C=US"
+    -dname "CN=Crimson, OU=Crimson, O=Crimson, L=, ST=, C=US"
 
 if ($LASTEXITCODE -ne 0) { Write-Error "keytool failed." }
 
 # Gradle reads storeFile relative to the project root.
 @"
-storeFile=secrets/retroguide-release.jks
+storeFile=secrets/crimson-release.jks
 storePassword=$plain
 keyAlias=$Alias
 keyPassword=$plain
