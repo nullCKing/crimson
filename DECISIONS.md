@@ -97,6 +97,10 @@ newest last, and still govern the engine Crimson inherited.
 - **Initial focus is requested twice** (`InitialFocus`): once on the first frame and again after
   the route crossfade, because the outgoing page releases focus when it is disposed, after the
   new page has claimed it. The root is focusable only on Watching and Guide for the same reason.
+- **Explicit vertical focus hand-off from lineup chips to channel cards** (`focusProperties { down = firstCard }`):
+  Compose's geometric focus search on a horizontal chip row placed directly above a lazy column sent
+  `Down` sideways to another chip rather than down into the channels. Explicit `focusProperties` routes
+  `Down` straight to the first card.
 - **Back on Home from the rows returns to the billboard first**, then leaves; the card the viewer
   left from is remembered per row (row id + title), because the same title appears in many rows.
 - **No blurred shadows under focused cards.** Removing it took vertical scrolling on the emulator

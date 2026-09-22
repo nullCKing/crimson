@@ -1,6 +1,6 @@
 # Device verification
 
-Produced by `tools/verify-on-device.ps1` on 2026-09-22 16:29.
+Produced by `tools/verify-on-device.ps1` on 2026-09-22 17:02.
 
 Device: `emulator-5554`
 APK: `app-release.apk`
@@ -10,14 +10,14 @@ Package: `com.crimson`
 - Mock server: mock-xtream: 5181 channels, 213 categories
 - Unit tests: PASS
 - Screenshot tests: recorded
-- Device: emulator-5554, mock server reachable at http://192.168.56.1:8080
+- Device: emulator-5554, mock server reachable at http://10.0.2.2:8080
 - Library joined to the title index: 593 films, 138 series
-- Memory after the import (TOTAL PSS): 104.1 MB
-- Home rows: 1119 frames rendered, 1037 janky (92.67%)
-- Time to first frame: 8 tunes, average 144 ms, range 87-371 ms
-- Filter toggle round trip (includes key delays): 1105 ms
-- Filter change applied in the app: 52 ms, 417 channels after the change
-- Sockets open to the mock server's port: 0 (1 or 0 expected; a value above 1 means two streams)
+- Memory after the import (TOTAL PSS): 95 MB
+- Home rows: 1008 frames rendered, 915 janky (90.77%)
+- Time to first frame: 5 tunes, average 254 ms, range 100-694 ms
+- Filter toggle round trip (includes key delays): 1095 ms
+- Filter change applied in the app: 68 ms, 417 channels after the change
+- Sockets open to the mock server's port: 2 (1 or 0 expected; a value above 1 means two streams)
 ## Artefacts
 
 - `screenshots/` — one image per navigation step, numbered in order.

@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -100,6 +101,7 @@ fun LiveScreen(
 ) {
     var inRows by remember { mutableStateOf(false) }
     val chipFocus = remember { FocusRequester() }
+    val firstCard = remember { FocusRequester() }
     val list = rememberLazyListState()
     var focusedRow by remember { mutableIntStateOf(0) }
 
@@ -116,6 +118,9 @@ fun LiveScreen(
                 TopNav(MainTab.LIVE, avatar, actions.onTab, actions.onSearch, actions.onProfile)
             }
             LiveHero(state, nowMs, preview, Modifier.fillMaxWidth().height(if (inRows) 214.dp else 196.dp))
+            // Down from any chip goes to the first channel, explicitly: left to geometry, a chip
+            // row directly above a lazy column sent Down sideways to another chip.
+            val toRows = Modifier.focusProperties { if (state.rows.isNotEmpty()) down = firstCard }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = Crimson.ScreenPadding, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -126,13 +131,14 @@ fun LiveScreen(
                         selected = state.collection == c,
                         onClick = { actions.onCollection(c) },
                         focusRequester = if (index == 0) chipFocus else null,
+                        modifier = toRows,
                     )
                 }
                 item {
-                    Chip("TV Guide", selected = false, onClick = actions.onGuide, icon = CrimsonIcons.Guide)
+                    Chip("TV Guide", selected = false, onClick = actions.onGuide, icon = CrimsonIcons.Guide, modifier = toRows)
                 }
                 item {
-                    Chip("Browse by Country", selected = false, onClick = actions.onDirectory, icon = CrimsonIcons.Globe)
+                    Chip("Browse by Country", selected = false, onClick = actions.onDirectory, icon = CrimsonIcons.Globe, modifier = toRows)
                 }
             }
             if (state.rows.isEmpty()) {
@@ -164,6 +170,8 @@ fun LiveScreen(
                             FeedRowView(
                                 row = row,
                                 nowMs = nowMs,
+                                restoreKey = if (index == 0) row.tiles.firstOrNull()?.key else null,
+                                restoreRequester = if (index == 0) firstCard else null,
                                 onTileClick = { actions.onOpen(it, row.tiles) },
                                 onTileFocus = {
                                     focusedRow = index

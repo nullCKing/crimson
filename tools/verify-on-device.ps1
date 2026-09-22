@@ -240,7 +240,7 @@ if ($Device -ne "") {
 Wait-ForBoot $serial
 
 # The emulator reaches the host's mock server at 10.0.2.2; a real device uses the LAN address.
-$serverForApp = if ($Device -ne "") {
+$serverForApp = if ($Device -ne "" -and $Device -notlike "emulator-*") {
     (Get-NetIPAddress -AddressFamily IPv4 |
         Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
         Select-Object -First 1).IPAddress + ":$mockPort"
