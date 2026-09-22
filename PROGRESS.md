@@ -1,11 +1,89 @@
 # Progress
 
-Written so a session with no memory of this one can pick it up. Read `PLAN.md` for the milestones
-and `DECISIONS.md` for why things are the way they are.
+Written so a session with no memory of this one can pick it up. Read `DECISIONS.md` for why
+things are the way they are.
 
-**Status: it builds, every test passes, and everything an emulator can verify has been verified on an
-Android TV emulator — against the mock server, and since 2026-09-22 against a real Xtream account
-signed in on the emulator. It has not yet run on a real Fire TV Stick.**
+**Status (2026-09-22): Crimson builds (`gradlew build` green: core tests, 17 screenshot tests,
+lint, minified release), and every page has been driven on an Android TV emulator against the mock
+server, in both the debug and the minified release build. It has not run on a real Fire TV Stick
+or against a real provider's account.**
+
+## Crimson, 2026-09-22: the fork and the redesign
+
+Forked from RetroGuide at `1f935f7` plus its uncommitted work (On Demand, Browse, curated lists,
+packages, extra EPG feeds), renamed to `com.crimson`, and given a new interface.
+
+### Built
+
+1. **Profiles.** `data/profile/ProfileStore` (encrypted, JSON in EncryptedSharedPreferences). A
+   `Session` per profile in `AppContainer` holds its Xtream client, its own Room database
+   (`crimson_<id>.db`) and its own DataStore. "Who's watching?" on launch; add/edit/delete, with
+   sign-in validated before saving.
+2. **Navigation** is a back stack of `Route`s in the view model; a controller per page.
+3. **Home / TV Shows / Movies**: billboard + spotlight + endless rows from `core/catalog/Feed.kt`,
+   resolved five rows at a time as the viewer nears the end. Top 10 rows, Continue Watching, My
+   List, Because You Watched, ~60 genre/mood/decade rows, then the provider's categories.
+4. **Recommendations**: `tools/make-title-index.py` → `assets/title_index.tsv` (22,430 films and
+   8,690 series with IMDb genres, rating and votes, 1.5 MB, ~0.5 MB in the APK). Applied to the
+   cached catalogue after import as indexed UPDATEs; on the mock catalogue 593 of 608 films and
+   138 of 140 series matched, in ~8–10 s on the emulator.
+5. **Title pages**, **VOD player controls**, **resume and progress** (`watch_progress` table),
+   **My List** (`my_list` table), next-episode autoplay.
+6. **Live TV** page with lineups, per-section rows with now-playing, a hero preview on the shared
+   player, the TV guide re-skinned (RetroGuide's canvas grid with Crimson's colours), and
+   **Browse by Country** (`core/live/WorldRegions`, 130+ countries/regions with flags; categories
+   the import skipped are fetched live).
+7. **Sports** from ESPN's scoreboard (14 leagues, one-minute cache), on its own page and as a Home
+   row; selecting a game searches Live TV for its network, then its other networks, then the teams.
+8. **Search** with an on-screen keyboard; hardware keyboards type straight in; `SearchRank` orders
+   results; single-kind results show as a grid.
+9. **Design system** in `ui/components` and `ui/theme/Crimson.kt`; launcher icon and TV banner
+   regenerated (`tools/make-art.py`).
+10. **Mock server** gained a real-title VOD catalogue with artwork, seasons/episodes and a
+    seekable film served with byte ranges (`tools/mock-xtream/vod.py`).
+11. **`tools/verify-on-device.ps1`** rewritten for the new flow.
+
+### Verified on the Android TV emulator (API 30, host GPU), mock server
+
+| Check | Result |
+| --- | --- |
+| First profile, bad password, second profile, switching | works; provider's "Invalid credentials" shown |
+| Import → Home | channels, guide, library, title-index join all complete; Home fills in when they land |
+| Home billboard, spotlight on focus, row pinning, Top 10, endless load-more | works (screenshots) |
+| Title page → play episode → seek/pause → Back → Resume S1:E1 → Continue Watching on Home | works |
+| Live TV preview on the shared player, Select to full screen, Up/Down zap, last channel, guide | works; 8 tunes, first frame avg 144 ms (87–371) |
+| Browse by Country, live-fetched category | works |
+| Sports with real ESPN data, game → search → fallback to teams | works |
+| Filter change from Settings | 52 ms in the app |
+| Memory after import (release build) | ~104 MB PSS (includes the player) |
+| Frame time scrolling Home rows vertically (release, warm) | p50 19 ms, p90 46 ms — emulator only |
+| Minified release build | runs end to end |
+
+### Not verified / known gaps
+
+- **No real Fire TV Stick run and no real provider account yet.** The numbers that matter —
+  import time for a 200k-title catalogue on a Stick's wifi, memory during it, frame times — need
+  `.\tools\verify-on-device.ps1 -Device <ip>:5555 -Reset` on hardware.
+- Frame times on the emulator are above 16 ms when scrolling rows vertically. The two biggest
+  costs found (blurred focus shadow, per-image scrims) are gone; the rest needs a real device's
+  profile to be worth chasing.
+- Sports → channel search depends on the provider carrying a channel named like the network. The
+  fallbacks (other networks, team names) help with event channels; regional networks
+  ("NBC Sports Phil") may still find nothing.
+- Artwork quality depends entirely on the provider: films get a backdrop only from
+  `get_vod_info`, fetched when a card keeps focus for ~320 ms, and cached.
+- `strings.xml` still carries RetroGuide-era strings the new screens do not use (lint does not
+  flag them); the UI text is inline.
+- The `LiveCategoriesScreen`, `HomeScreen`, `OnDemandScreen` and `BrowseScreen` of RetroGuide were
+  removed; the curated-lists asset was replaced by the title index (the `CuratedLists` code in
+  `core/catalog` remains, tested, but unused by the app).
+
+---
+
+# RetroGuide history (inherited)
+
+Everything below is RetroGuide's progress log, kept because the engine it describes is Crimson's
+engine. Screen names in it refer to RetroGuide's UI, which no longer exists here.
 
 ## 2026-09-22 (latest): On Demand, Browse, curated lists and channel packages
 

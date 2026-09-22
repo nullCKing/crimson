@@ -1,6 +1,125 @@
 # Decisions
 
-Every non-obvious choice, with the reason. Newest section last.
+Every non-obvious choice, with the reason. Crimson's decisions come first; RetroGuide's follow,
+newest last, and still govern the engine Crimson inherited.
+
+## Crimson (2026-09-22)
+
+### Scope and shape
+
+- **A fork, not a branch.** The request was a new app with RetroGuide's bones and a different
+  UI. RetroGuide's working tree (including its uncommitted On Demand/Browse work) was copied,
+  renamed `com.retroguide` → `com.crimson`, and started a fresh git history; RetroGuide's own repo
+  was not touched. Crimson has its own application id and signing key, so both install side by
+  side.
+- **The engine is kept whole.** Import, filter, numbering, the four EPG sources, the short-EPG
+  fallback, the single ExoPlayer and the canvas guide grid were kept and still tested. Only the UI
+  and the data it needed (profiles, catalogue metadata, progress, list) are new. The guide was
+  re-skinned through `GuideTheme` values alone — no grid code changed.
+- **No "On Demand" wording.** Films and series are "Movies" and "TV Shows", as the brief asked.
+
+### Profiles
+
+- **One profile = one Xtream login, with its own database and DataStore.** Two logins are usually
+  two providers; nothing one imported means anything to the other. A shared database keyed by
+  profile would have meant a profile column on every table and every query.
+- **Databases stay open once opened** (`CrimsonDatabase.open` caches per profile). Closing one on
+  a switch risks a query still in flight throwing on a closed database; a household has a handful
+  of profiles.
+- **Saving a profile signs in first**, so a profile that exists works, and the provider's own
+  error text is shown when it refuses.
+- **Avatars are drawn**, not shipped: eight colours × four faces on a Canvas, crisp at any size.
+
+### Recommendations
+
+- **An IMDb title index joined into the catalogue, not curated lists.** RetroGuide's 46 curated
+  lists (2,717 titles) could only ever fill 46 rows. The title index (every film with ≥4,000
+  votes and series with ≥2,000: ~31,000 titles, 1.5 MB) gives each cached title genres, rating
+  and popularity, and every row becomes a query: "crime + thriller, most popular first",
+  "rated ≥7.3 with 4k–60k votes, shuffled" (Hidden Gems). That is what makes the feed deep.
+- **Applied as indexed UPDATEs in 500-title transactions**, streaming the asset, so neither the
+  index nor the catalogue is ever in memory. Ascending-votes order means that when a provider's
+  copy has no year, the most popular title of that name is applied last and wins.
+- **Rows are data** (`FeedPlanner` → `RowSpec` → `CatalogSql`), unit-tested in `core`, resolved a
+  few at a time as the viewer scrolls. Rows too short for an account are skipped silently, so the
+  plan can list far more than any catalogue fills; the provider's own categories form the endless
+  tail.
+- **Foreign copies and adult content are flagged at import** (`isForeign`, `isAdult`) from the
+  category and name, using the live filter's own foreign-marker list, and every feed query
+  excludes them. Search still finds foreign copies, ranked below English ones.
+- **One card per title**: queries fetch 3× the row size and `Mappers.dedupe` keeps the
+  best-language copy (EN/US/UK label, then unlabelled, then anything else).
+- **Titles already shown twice on a page drop to the back of later rows**, so scrolling keeps
+  turning up something new instead of the same blockbusters in every genre row.
+- **"Top 10" is honest about what it is**: the most-rated titles from the last two (films) or
+  three (series) years that this account carries — a popularity chart, not a live one. No free,
+  keyless trending API exists (TMDB and Trakt both need keys).
+
+### Sports
+
+- **ESPN's public scoreboard** (`site.api.espn.com/apis/site/v2/sports/{sport}/{league}/scoreboard`)
+  because it is free, keyless, covers every major league and — the point — names the TV network
+  per game. It is unofficial: the parser takes only the fields it needs, treats each as optional,
+  and a failure shows "Scores are unavailable" rather than an error. Cached one minute per league.
+- **A game opens a search, not a channel.** The request was "taken to a search output of the
+  listed channel". `BroadcastSearch.termsFor` gives the national TV network first, then other
+  networks, then streaming services providers re-broadcast (Prime, Peacock, ESPN+), then the
+  teams; the search page falls through them until one finds a channel and says so.
+- **Team streaming feeds are not channels.** ESPN lists "MLB.TV", "Brewers.TV" — anything ending
+  in `.TV` or `+`, or "League Pass", is skipped as a search term unless nothing else is left.
+
+### Live TV
+
+- **American Cable by default**, with RetroGuide's Japanese and Korean packages as the other
+  lineups, laid out as rows by the package's sections, plus "Local Channels" / "More from Japan"
+  / "More from Korea" tails. "All Channels" is every provider category as a row.
+- **Previews use the one player.** After the cursor rests 1.4 s on a channel it plays in the hero;
+  Select then continues the same stream full screen with no re-tune. Leaving Live TV stops it. A
+  setting turns previews off for accounts where the one connection is precious.
+- **Browse by Country** groups every category by `WorldRegions.forCategory` (kept-country code,
+  then foreign marker, then the name's own prefix). Categories RetroGuide's filter never imported
+  are fetched on open (up to 2,000 channels, six categories cached) and played directly without
+  entering the guide.
+- **Up/Down zap through whatever the viewer tuned from** — a lineup row, a directory category,
+  search results — not always the guide's list.
+
+### Interaction and rendering
+
+- **Focus is white; red is meaning.** A white ring and a lift on cards; white fill on buttons and
+  chips. Red marks live, progress, the selected tab/chip and primary actions. A primary button is
+  red at rest and white under focus: a white primary next to a white-focused secondary was
+  indistinguishable in testing (the profile editor's Save/Cancel).
+- **Rows pin their focused card at a fixed offset** (`PivotScroll`), vertically and horizontally,
+  the way streaming apps do. The `BringIntoViewSpec` animation must be a spring: Compose
+  recalculates the target every frame, and a tween restarted every frame crawled at ~1 px/frame.
+- **Document pages reveal minimally** (`RevealScroll`). Android TV's own default spec is a 30%
+  pivot, which on the title page scrolled the title off screen when Play took focus.
+- **Initial focus is requested twice** (`InitialFocus`): once on the first frame and again after
+  the route crossfade, because the outgoing page releases focus when it is disposed, after the
+  new page has claimed it. The root is focusable only on Watching and Guide for the same reason.
+- **Back on Home from the rows returns to the billboard first**, then leaves; the card the viewer
+  left from is remembered per row (row id + title), because the same title appears in many rows.
+- **No blurred shadows under focused cards.** Removing it took vertical scrolling on the emulator
+  from 24 to 18 ms/frame and slow draw commands from 19 to 0. Backdrop scrims are drawn once over
+  the crossfade instead of once per image, and the corner bloom is sized to its corner.
+- **Text fields on a remote**: Up/Down leave the field; Left/Right leave it only at the text's
+  edges (the caret position is tracked with a `TextFieldValue`), Select reopens the keyboard.
+- **Channel logos fall back to the name in type** when missing or broken — providers' logo URLs
+  are often dead, and a blank card is the one thing a channel card must not be.
+- **Icons are drawn from Material path strings** (`CrimsonIcons`), not the extended icon artifact
+  (megabytes for thirty icons).
+- **Search draws its own keyboard**: the TV system keyboard covers the results it types for.
+
+### Test data
+
+- **The mock catalogue uses real titles from the title index** so the recommendation rows have
+  something to match; names follow provider conventions, with French dubs and an adult category to
+  prove the filters. Artwork is picsum.photos, seeded per title. A three-minute seekable MP4 with
+  byte-range support stands in for every film and episode.
+
+---
+
+# RetroGuide (inherited)
 
 ## Environment
 
