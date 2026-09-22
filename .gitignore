@@ -1,0 +1,38 @@
+# Credentials and signing material. Nothing in here is ever committed.
+secrets/
+*.jks
+*.keystore
+keystore.properties
+local.properties
+
+# Real account data pulled from a device for debugging. Never committed.
+debug/real-account-snapshot/
+
+# Build output
+build/
+.gradle/
+dist/
+*.apk
+*.aab
+
+# Generated test media and fixtures
+tools/mock-xtream/media/
+tools/mock-xtream/generated/
+
+# Emulator verification output (root screenshots/ only; Roborazzi baselines under
+# app/src/test/screenshots/ ARE committed, since a baseline nobody stores verifies nothing).
+/screenshots/*.png
+!/screenshots/.gitkeep
+reports/*.txt
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Kotlin 2.x compiler session files
+.kotlin/
+
+# Python bytecode from the mock server and discovery tool
+__pycache__/

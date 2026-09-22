@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only the handful of colours the Android framework needs before Compose starts drawing.
+  The guide's real palette lives in GuideTheme.kt, which is the one place to change the look.
+-->
+<resources>
+    <color name="navy_deep">#FF081438</color>
+    <color name="navy">#FF0E2154</color>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Most Xtream panels are served over plain HTTP on a non-standard port, and a great many have no
+  TLS at all. Refusing cleartext would make the app unusable with the servers it exists to talk to.
+
+  Cleartext is therefore permitted, but the trade-off is stated plainly rather than hidden: an
+  Xtream login travels as a query string, so on a cleartext server the credentials are visible to
+  anything on the path. The settings screen says so, and the app prefers https when the panel
+  reports an https port.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

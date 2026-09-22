@@ -1,0 +1,2765 @@
+# Generated from IMDb datasets (https://datasets.imdbws.com/) by
+# tools/make-curated-lists.py. Do not edit by hand; re-run the tool.
+#top_movies	IMDb Top Rated Movies	The highest rated films of all time
+The Shawshank Redemption	1994	M
+The Godfather	1972	M
+The Dark Knight	2008	M
+The Chaos Class	1975	M
+The Lord of the Rings: The Return of the King	2003	M
+Schindler's List	1993	M
+The Godfather Part II	1974	M
+12 Angry Men	1957	M
+The Lord of the Rings: The Fellowship of the Ring	2001	M
+Attack on Titan: The Last Attack	2024	M
+David Attenborough: A Life on Our Planet	2020	M
+Tosun Pasha	1976	M
+Inception	2010	M
+Fight Club	1999	M
+Forrest Gump	1994	M
+Pulp Fiction	1994	M
+The Lord of the Rings: The Two Towers	2002	M
+The Good, the Bad and the Ugly	1966	M
+Punjab '95	2026	M
+Mirror Game	2016	M
+Interstellar	2014	M
+The Matrix	1999	M
+Star Wars: Episode V - The Empire Strikes Back	1980	M
+GoodFellas	1990	M
+12th Fail	2023	M
+Kill Bill: The Whole Bloody Affair	2004	M
+777 Charlie	2022	M
+Seven	1995	M
+The Silence of the Lambs	1991	M
+Saving Private Ryan	1998	M
+Star Wars: Episode IV - A New Hope	1977	M
+The Green Mile	1999	M
+Terminator 2: Judgment Day	1991	M
+One Flew Over the Cuckoo's Nest	1975	M
+Spirited Away	2001	M
+City of God	2002	M
+Life Is Beautiful	1997	M
+It's a Wonderful Life	1946	M
+Seven Samurai	1954	M
+Jai Bhim	2021	M
+Soorarai Pottru	2020	M
+Harakiri	1962	M
+20 Days in Mariupol	2023	M
+Rocketry: The Nambi Effect	2022	M
+Anbe Sivam	2003	M
+Nayakan	1987	M
+Django Unchained	2012	M
+Gladiator	2000	M
+The Prestige	2006	M
+The Departed	2006	M
+Back to the Future	1985	M
+Léon: The Professional	1994	M
+American History X	1998	M
+The Lion King	1994	M
+The Usual Suspects	1995	M
+Parasite	2019	M
+Whiplash	2014	M
+The Intouchables	2011	M
+The Pianist	2002	M
+Psycho	1960	M
+#most_watched	Most Watched Movies	The films the most people have rated
+The Shawshank Redemption	1994	M
+The Dark Knight	2008	M
+Inception	2010	M
+Fight Club	1999	M
+Interstellar	2014	M
+Forrest Gump	1994	M
+Pulp Fiction	1994	M
+The Matrix	1999	M
+The Godfather	1972	M
+The Lord of the Rings: The Fellowship of the Ring	2001	M
+The Lord of the Rings: The Return of the King	2003	M
+Seven	1995	M
+The Dark Knight Rises	2012	M
+The Lord of the Rings: The Two Towers	2002	M
+Django Unchained	2012	M
+Gladiator	2000	M
+The Wolf of Wall Street	2013	M
+Inglourious Basterds	2009	M
+The Silence of the Lambs	1991	M
+Batman Begins	2005	M
+Joker	2019	M
+Shutter Island	2010	M
+Saving Private Ryan	1998	M
+The Prestige	2006	M
+Schindler's List	1993	M
+Star Wars: Episode IV - A New Hope	1977	M
+The Green Mile	1999	M
+The Avengers	2012	M
+The Departed	2006	M
+Star Wars: Episode V - The Empire Strikes Back	1980	M
+Avatar	2009	M
+The Godfather Part II	1974	M
+Avengers: Endgame	2019	M
+Back to the Future	1985	M
+Memento	2000	M
+GoodFellas	1990	M
+Titanic	1997	M
+Avengers: Infinity War	2018	M
+The Truman Show	1998	M
+Guardians of the Galaxy	2014	M
+Léon: The Professional	1994	M
+Pirates of the Caribbean: The Curse of the Black Pearl	2003	M
+WALL·E	2008	M
+Kill Bill: Vol. 1	2003	M
+Terminator 2: Judgment Day	1991	M
+American Beauty	1999	M
+American History X	1998	M
+The Lion King	1994	M
+Deadpool	2016	M
+Catch Me If You Can	2002	M
+Up	2009	M
+V for Vendetta	2005	M
+The Usual Suspects	1995	M
+Iron Man	2008	M
+The Shining	1980	M
+Good Will Hunting	1997	M
+Finding Nemo	2003	M
+Star Wars: Episode VI - Return of the Jedi	1983	M
+Mad Max: Fury Road	2015	M
+No Country for Old Men	2007	M
+#decade_1970	Best of the 1970s	Top rated films from 1970–1979
+The Godfather	1972	M
+The Chaos Class	1975	M
+The Godfather Part II	1974	M
+Tosun Pasha	1976	M
+Star Wars: Episode IV - A New Hope	1977	M
+One Flew Over the Cuckoo's Nest	1975	M
+Alien	1979	M
+Apocalypse Now	1979	M
+The Chaos Class Failed the Class	1975	M
+Taxi Driver	1976	M
+A Clockwork Orange	1971	M
+The Sting	1973	M
+Dersu Uzala	1975	M
+Jaws	1975	M
+Rocky	1976	M
+Monty Python and the Holy Grail	1975	M
+The Exorcist	1973	M
+The Deer Hunter	1978	M
+Chinatown	1974	M
+Barry Lyndon	1975	M
+Sholay	1975	M
+Paper Moon	1973	M
+The Message	1976	M
+Autumn Sonata	1978	M
+Anand	1971	M
+Monty Python's Life of Brian	1979	M
+Dog Day Afternoon	1975	M
+Network	1976	M
+Young Frankenstein	1974	M
+Stalker	1979	M
+Papillon	1973	M
+The Last Picture Show	1971	M
+Fiddler on the Roof	1971	M
+A Woman Under the Influence	1974	M
+Day for Night	1973	M
+Fear Eats the Soul	1974	M
+Annie Hall	1977	M
+All the President's Men	1976	M
+Patton	1970	M
+Solaris	1972	M
+Being There	1979	M
+The Mirror	1975	M
+Sleuth	1972	M
+Cries & Whispers	1972	M
+The Conformist	1970	M
+The Red Circle	1970	M
+Willy Wonka & the Chocolate Factory	1971	M
+Kramer vs. Kramer	1979	M
+Manhattan	1979	M
+Dawn of the Dead	1978	M
+The Outlaw Josey Wales	1976	M
+Harold and Maude	1971	M
+Aguirre, the Wrath of God	1972	M
+Cabaret	1972	M
+The Day of the Jackal	1973	M
+Amarcord	1973	M
+All That Jazz	1979	M
+That Obscure Object of Desire	1977	M
+Halloween	1978	M
+Dirty Harry	1971	M
+#decade_1980	Best of the 1980s	Top rated films from 1980–1989
+Star Wars: Episode V - The Empire Strikes Back	1980	M
+Nayakan	1987	M
+Back to the Future	1985	M
+Grave of the Fireflies	1988	M
+Cinema Paradiso	1988	M
+The Shining	1980	M
+Raiders of the Lost Ark	1981	M
+Aliens	1986	M
+Amadeus	1984	M
+Star Wars: Episode VI - Return of the Jedi	1983	M
+Scarface	1983	M
+Once Upon a Time in America	1984	M
+Das Boot	1981	M
+Come and See	1985	M
+Die Hard	1988	M
+Indiana Jones and the Last Crusade	1989	M
+Full Metal Jacket	1987	M
+The Thing	1982	M
+The Elephant Man	1980	M
+Ran	1985	M
+Koyaanisqatsi	1982	M
+The Terminator	1984	M
+Blade Runner	1982	M
+Dead Poets Society	1989	M
+Stand by Me	1986	M
+My Neighbor Totoro	1988	M
+Raging Bull	1980	M
+Paris, Texas	1984	M
+Fanny and Alexander	1982	M
+Time of the Gypsies	1988	M
+Jean de Florette	1986	M
+A Short Film About Love	1988	M
+Rain Man	1988	M
+The Princess Bride	1987	M
+Platoon	1986	M
+Gandhi	1982	M
+Akira	1988	M
+Castle in the Sky	1986	M
+Nausicaä of the Valley of the Wind	1984	M
+Pink Floyd: The Wall	1982	M
+Au Revoir Les Enfants	1987	M
+Manon of the Spring	1986	M
+E.T. the Extra-Terrestrial	1982	M
+The Blues Brothers	1980	M
+A Christmas Story	1983	M
+This Is Spinal Tap	1984	M
+Do the Right Thing	1989	M
+Wings of Desire	1987	M
+Fitzcarraldo	1982	M
+Kagemusha: The Shadow Warrior	1980	M
+Nostalgia	1983	M
+Tampopo	1985	M
+The Thin Blue Line	1988	M
+Back to the Future Part II	1989	M
+Predator	1987	M
+Ghostbusters	1984	M
+The Breakfast Club	1985	M
+Ferris Bueller's Day Off	1986	M
+The Untouchables	1987	M
+Brazil	1985	M
+#decade_1990	Best of the 1990s	Top rated films from 1990–1999
+The Shawshank Redemption	1994	M
+Schindler's List	1993	M
+Fight Club	1999	M
+Forrest Gump	1994	M
+Pulp Fiction	1994	M
+The Matrix	1999	M
+GoodFellas	1990	M
+Seven	1995	M
+The Silence of the Lambs	1991	M
+Saving Private Ryan	1998	M
+The Green Mile	1999	M
+Terminator 2: Judgment Day	1991	M
+Life Is Beautiful	1997	M
+Léon: The Professional	1994	M
+American History X	1998	M
+The Lion King	1994	M
+The Usual Suspects	1995	M
+Baraka	1992	M
+Good Will Hunting	1997	M
+American Beauty	1999	M
+Toy Story	1995	M
+Braveheart	1995	M
+Heat	1995	M
+Princess Mononoke	1997	M
+Hoop Dreams	1994	M
+The Truman Show	1998	M
+Jurassic Park	1993	M
+Reservoir Dogs	1992	M
+The Sixth Sense	1999	M
+L.A. Confidential	1997	M
+Casino	1995	M
+Unforgiven	1992	M
+Children of Heaven	1997	M
+Close-Up	1990	M
+The Big Lebowski	1998	M
+Fargo	1996	M
+Trainspotting	1996	M
+Lock, Stock and Two Smoking Barrels	1998	M
+Before Sunrise	1995	M
+The Iron Giant	1999	M
+La haine	1995	M
+In the Name of the Father	1993	M
+Neon Genesis Evangelion: The End of Evangelion	1997	M
+The Bandit	1996	M
+Raise the Red Lantern	1991	M
+Farewell My Concubine	1993	M
+Everything's Gonna Be Great	1998	M
+Sarfarosh	1999	M
+Jo Jeeta Wohi Sikandar	1992	M
+Hearts of Darkness: A Filmmaker's Apocalypse	1991	M
+Titanic	1997	M
+Groundhog Day	1993	M
+12 Monkeys	1995	M
+Beauty and the Beast	1991	M
+Aladdin	1992	M
+Scent of a Woman	1992	M
+Magnolia	1999	M
+Dances with Wolves	1990	M
+JFK	1991	M
+Perfect Blue	1997	M
+#decade_2000	Best of the 2000s	Top rated films from 2000–2009
+The Dark Knight	2008	M
+The Lord of the Rings: The Return of the King	2003	M
+The Lord of the Rings: The Fellowship of the Ring	2001	M
+The Lord of the Rings: The Two Towers	2002	M
+Kill Bill: The Whole Bloody Affair	2004	M
+Spirited Away	2001	M
+City of God	2002	M
+Anbe Sivam	2003	M
+Gladiator	2000	M
+The Prestige	2006	M
+The Departed	2006	M
+The Pianist	2002	M
+Dear Zachary: A Letter to a Son About His Father	2008	M
+Inglourious Basterds	2009	M
+Memento	2000	M
+WALL·E	2008	M
+3 Idiots	2009	M
+The Lives of Others	2006	M
+The Cove	2009	M
+The Best of Youth	2003	M
+Anniyan	2005	M
+Black Friday	2004	M
+Up	2009	M
+Eternal Sunshine of the Spotless Mind	2004	M
+Requiem for a Dream	2000	M
+Oldboy	2003	M
+Like Stars on Earth	2007	M
+Batman Begins	2005	M
+Kill Bill: Vol. 1	2003	M
+Finding Nemo	2003	M
+No Country for Old Men	2007	M
+A Beautiful Mind	2001	M
+Snatch	2000	M
+Amélie	2001	M
+Pan's Labyrinth	2006	M
+There Will Be Blood	2007	M
+Howl's Moving Castle	2004	M
+Downfall	2004	M
+The Secret in Their Eyes	2009	M
+Swades	2004	M
+My Father and My Son	2005	M
+Munna Bhai M.B.B.S.	2003	M
+Hera Pheri	2000	M
+Khosla Ka Ghosla!	2006	M
+Pirates of the Caribbean: The Curse of the Black Pearl	2003	M
+Catch Me If You Can	2002	M
+V for Vendetta	2005	M
+Monsters, Inc.	2001	M
+Ratatouille	2007	M
+Gran Torino	2008	M
+Million Dollar Baby	2004	M
+Hotel Rwanda	2004	M
+Hachi: A Dog's Tale	2009	M
+Before Sunset	2004	M
+Memories of Murder	2003	M
+Mary and Max	2009	M
+Lagaan: Once Upon a Time in India	2001	M
+Rang De Basanti	2006	M
+Chak De! India	2007	M
+A Wednesday	2008	M
+#decade_2010	Best of the 2010s	Top rated films from 2010–2019
+Inception	2010	M
+Mirror Game	2016	M
+Interstellar	2014	M
+Django Unchained	2012	M
+Parasite	2019	M
+Whiplash	2014	M
+The Intouchables	2011	M
+Jersey	2019	M
+The Dark Knight Rises	2012	M
+Avengers: Endgame	2019	M
+Avengers: Infinity War	2018	M
+Spider-Man: Into the Spider-Verse	2018	M
+Coco	2017	M
+Your Name.	2016	M
+Capernaum	2018	M
+Senna	2010	M
+Kaithi	2019	M
+Drishyam	2013	M
+96	2018	M
+Samsara	2011	M
+Asuran	2019	M
+The Salt of the Earth	2014	M
+Joker	2019	M
+Toy Story 3	2010	M
+The Hunt	2012	M
+A Separation	2011	M
+Incendies	2010	M
+Dangal	2016	M
+Chhichhore	2019	M
+Ratsasan	2018	M
+Premam	2015	M
+Bangalore Days	2014	M
+Won't You Be My Neighbor?	2018	M
+The Wolf of Wall Street	2013	M
+Shutter Island	2010	M
+Prisoners	2013	M
+1917	2019	M
+Green Book	2018	M
+Klaus	2019	M
+A Silent Voice: The Movie	2016	M
+Baahubali 2: The Conclusion	2017	M
+Andhadhun	2018	M
+Gangs of Wasseypur	2012	M
+Drishyam	2015	M
+Zindagi Na Milegi Dobara	2011	M
+Uri: The Surgical Strike	2019	M
+Inside Job	2010	M
+Bhaag Milkha Bhaag	2013	M
+Tumbbad	2018	M
+Searching for Sugar Man	2012	M
+Miracle in Cell No. 7	2019	M
+Vikram Vedha	2017	M
+Ayla: The Daughter of War	2017	M
+The Act of Killing	2012	M
+They Shall Not Grow Old	2018	M
+Paan Singh Tomar	2012	M
+13th	2016	M
+Rangasthalam	2018	M
+Mad Max: Fury Road	2015	M
+Gone Girl	2014	M
+#decade_2020	Best of the 2020s	Top rated films from 2020–2029
+Attack on Titan: The Last Attack	2024	M
+David Attenborough: A Life on Our Planet	2020	M
+Punjab '95	2026	M
+12th Fail	2023	M
+777 Charlie	2022	M
+Jai Bhim	2021	M
+Soorarai Pottru	2020	M
+20 Days in Mariupol	2023	M
+Rocketry: The Nambi Effect	2022	M
+The Kashmir Files	2022	M
+Spider-Man: Across the Spider-Verse	2023	M
+Sita Ramam	2022	M
+Mahavatar Narsimha	2024	M
+Dune: Part Two	2024	M
+The Odyssey	2026	M
+Demon Slayer: Kimetsu No Yaiba Infinity Castle	2025	M
+Drishyam 2	2021	M
+Demon Slayer: Kimetsu no Yaiba - Tsuzumi Mansion Arc	2021	M
+Sarpatta Parambarai	2021	M
+Hamilton	2020	M
+Dil Bechara	2020	M
+Shershaah	2021	M
+Vikram	2022	M
+Maharaja	2024	M
+Chainsaw Man - The Movie: Reze Arc	2025	M
+I Swear	2025	M
+Lost Ladies	2023	M
+Sardar Udham	2021	M
+Hi Nanna	2023	M
+Oppenheimer	2023	M
+Top Gun: Maverick	2022	M
+Project Hail Mary	2026	M
+The Father	2020	M
+K.G.F: Chapter 2	2022	M
+Dhurandhar	2025	M
+Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train	2020	M
+Dhurandhar: The Revenge	2026	M
+No Other Land	2024	M
+Drishyam 2	2022	M
+Manjummel Boys	2024	M
+Spider-Man: No Way Home	2021	M
+The Wild Robot	2024	M
+I'm Still Here	2024	M
+Kantara	2022	M
+My Octopus Teacher	2020	M
+Kantara: A Legend - Chapter 1	2025	M
+What Is a Woman?	2022	M
+Seaspiracy	2021	M
+Major	2022	M
+Maanaadu	2021	M
+Dune	2021	M
+Soul	2020	M
+Spider-Man: Brand New Day	2026	M
+CODA	2021	M
+Farha	2021	M
+Dara of Jasenovac	2020	M
+Wolfwalkers	2020	M
+Lucky Baskhar	2024	M
+Quo Vadis, Aida?	2020	M
+Sirf Ek Bandaa Kaafi Hai	2023	M
+#genre_action	Action Movies	Top rated action
+Attack on Titan: The Last Attack	2024	M
+The Matrix	1999	M
+Kill Bill: The Whole Bloody Affair	2004	M
+Star Wars: Episode IV - A New Hope	1977	M
+Terminator 2: Judgment Day	1991	M
+Seven Samurai	1954	M
+Gladiator	2000	M
+Léon: The Professional	1994	M
+Spider-Man: Across the Spider-Verse	2023	M
+Sita Ramam	2022	M
+Mahavatar Narsimha	2024	M
+Avengers: Endgame	2019	M
+Avengers: Infinity War	2018	M
+Aliens	1986	M
+Spider-Man: Into the Spider-Verse	2018	M
+Dune: Part Two	2024	M
+The Odyssey	2026	M
+Demon Slayer: Kimetsu No Yaiba Infinity Castle	2025	M
+Kaithi	2019	M
+Asuran	2019	M
+Demon Slayer: Kimetsu no Yaiba - Tsuzumi Mansion Arc	2021	M
+Sarpatta Parambarai	2021	M
+Anniyan	2005	M
+Black Friday	2004	M
+Star Wars: Episode VI - Return of the Jedi	1983	M
+Heat	1995	M
+Oldboy	2003	M
+Dangal	2016	M
+Shershaah	2021	M
+Vikram	2022	M
+Maharaja	2024	M
+Chainsaw Man - The Movie: Reze Arc	2025	M
+Kill Bill: Vol. 1	2003	M
+Die Hard	1988	M
+Top Gun: Maverick	2022	M
+K.G.F: Chapter 2	2022	M
+Ran	1985	M
+Dhurandhar	2025	M
+Yojimbo	1961	M
+Baahubali 2: The Conclusion	2017	M
+Gangs of Wasseypur	2012	M
+Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train	2020	M
+Uri: The Surgical Strike	2019	M
+Hera Pheri	2000	M
+Dhurandhar: The Revenge	2026	M
+Vikram Vedha	2017	M
+Paan Singh Tomar	2012	M
+Rangasthalam	2018	M
+Pirates of the Caribbean: The Curse of the Black Pearl	2003	M
+V for Vendetta	2005	M
+Mad Max: Fury Road	2015	M
+Spider-Man: No Way Home	2021	M
+The Terminator	1984	M
+Logan	2017	M
+How to Train Your Dragon	2010	M
+Blade Runner	1982	M
+Ford v Ferrari	2019	M
+Warrior	2011	M
+The Iron Giant	1999	M
+Kantara	2022	M
+#genre_adventure	Adventure Movies	Top rated adventure
+The Lord of the Rings: The Return of the King	2003	M
+The Lord of the Rings: The Fellowship of the Ring	2001	M
+Attack on Titan: The Last Attack	2024	M
+Inception	2010	M
+The Lord of the Rings: The Two Towers	2002	M
+The Good, the Bad and the Ugly	1966	M
+Interstellar	2014	M
+Star Wars: Episode V - The Empire Strikes Back	1980	M
+777 Charlie	2022	M
+Star Wars: Episode IV - A New Hope	1977	M
+Terminator 2: Judgment Day	1991	M
+Spirited Away	2001	M
+Anbe Sivam	2003	M
+Gladiator	2000	M
+Back to the Future	1985	M
+The Lion King	1994	M
+Spider-Man: Across the Spider-Verse	2023	M
+Avengers: Endgame	2019	M
+Avengers: Infinity War	2018	M
+WALL·E	2008	M
+Raiders of the Lost Ark	1981	M
+Aliens	1986	M
+Spider-Man: Into the Spider-Verse	2018	M
+Dune: Part Two	2024	M
+Coco	2017	M
+The Odyssey	2026	M
+Demon Slayer: Kimetsu No Yaiba Infinity Castle	2025	M
+Up	2009	M
+Star Wars: Episode VI - Return of the Jedi	1983	M
+Toy Story	1995	M
+Toy Story 3	2010	M
+2001: A Space Odyssey	1968	M
+Princess Mononoke	1997	M
+Lawrence of Arabia	1962	M
+Chainsaw Man - The Movie: Reze Arc	2025	M
+Finding Nemo	2003	M
+Jurassic Park	1993	M
+Indiana Jones and the Last Crusade	1989	M
+Project Hail Mary	2026	M
+Howl's Moving Castle	2004	M
+North by Northwest	1959	M
+The Great Escape	1963	M
+Klaus	2019	M
+The Treasure of the Sierra Madre	1948	M
+Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train	2020	M
+Zindagi Na Milegi Dobara	2011	M
+Dersu Uzala	1975	M
+Manjummel Boys	2024	M
+Pirates of the Caribbean: The Curse of the Black Pearl	2003	M
+Mad Max: Fury Road	2015	M
+Monsters, Inc.	2001	M
+Spider-Man: No Way Home	2021	M
+Harry Potter and the Deathly Hallows: Part 2	2011	M
+The Terminator	1984	M
+Ratatouille	2007	M
+Inside Out	2015	M
+How to Train Your Dragon	2010	M
+Jaws	1975	M
+Monty Python and the Holy Grail	1975	M
+Stand by Me	1986	M
+#genre_animation	Animation Movies	Top rated animation
+Attack on Titan: The Last Attack	2024	M
+Spirited Away	2001	M
+The Lion King	1994	M
+Spider-Man: Across the Spider-Verse	2023	M
+Grave of the Fireflies	1988	M
+Mahavatar Narsimha	2024	M
+WALL·E	2008	M
+Spider-Man: Into the Spider-Verse	2018	M
+Coco	2017	M
+Your Name.	2016	M
+Demon Slayer: Kimetsu No Yaiba Infinity Castle	2025	M
+Demon Slayer: Kimetsu no Yaiba - Tsuzumi Mansion Arc	2021	M
+Up	2009	M
+Toy Story	1995	M
+Toy Story 3	2010	M
+Princess Mononoke	1997	M
+Chainsaw Man - The Movie: Reze Arc	2025	M
+Finding Nemo	2003	M
+Howl's Moving Castle	2004	M
+Klaus	2019	M
+A Silent Voice: The Movie	2016	M
+Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train	2020	M
+Monsters, Inc.	2001	M
+Ratatouille	2007	M
+Inside Out	2015	M
+How to Train Your Dragon	2010	M
+My Neighbor Totoro	1988	M
+The Iron Giant	1999	M
+The Wild Robot	2024	M
+Mary and Max	2009	M
+Neon Genesis Evangelion: The End of Evangelion	1997	M
+Wolf Children	2012	M
+I Want to Eat Your Pancreas	2018	M
+The Incredibles	2004	M
+Zootopia	2016	M
+Beauty and the Beast	1991	M
+Aladdin	1992	M
+Soul	2020	M
+Akira	1988	M
+Castle in the Sky	1986	M
+Nausicaä of the Valley of the Wind	1984	M
+Perfect Blue	1997	M
+Persepolis	2007	M
+Song of the Sea	2014	M
+The Tale of The Princess Kaguya	2013	M
+Waltz with Bashir	2008	M
+Wolfwalkers	2020	M
+Shrek	2001	M
+Toy Story 2	1999	M
+The Nightmare Before Christmas	1993	M
+Fantastic Mr. Fox	2009	M
+Puss in Boots: The Last Wish	2022	M
+Ghost in the Shell	1995	M
+Evangelion: 2.0 You Can (Not) Advance	2009	M
+Ne Zha 2	2025	M
+Big Hero 6	2014	M
+How to Train Your Dragon 2	2014	M
+Coraline	2009	M
+Isle of Dogs	2018	M
+Kiki's Delivery Service	1989	M
+#genre_comedy	Comedy Movies	Top rated comedy
+The Chaos Class	1975	M
+Tosun Pasha	1976	M
+777 Charlie	2022	M
+Life Is Beautiful	1997	M
+Anbe Sivam	2003	M
+Back to the Future	1985	M
+The Intouchables	2011	M
+Modern Times	1936	M
+City Lights	1931	M
+3 Idiots	2009	M
+The Great Dictator	1940	M
+The Chaos Class Failed the Class	1975	M
+Up	2009	M
+Toy Story	1995	M
+Toy Story 3	2010	M
+Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb	1964	M
+Singin' in the Rain	1952	M
+The Apartment	1960	M
+Dil Bechara	2020	M
+Chhichhore	2019	M
+Lost Ladies	2023	M
+Premam	2015	M
+Bangalore Days	2014	M
+The Wolf of Wall Street	2013	M
+The Truman Show	1998	M
+Finding Nemo	2003	M
+Snatch	2000	M
+Amélie	2001	M
+Green Book	2018	M
+Project Hail Mary	2026	M
+Some Like It Hot	1959	M
+The Sting	1973	M
+Klaus	2019	M
+The Kid	1921	M
+Andhadhun	2018	M
+Gangs of Wasseypur	2012	M
+Munna Bhai M.B.B.S.	2003	M
+Zindagi Na Milegi Dobara	2011	M
+Hera Pheri	2000	M
+Khosla Ka Ghosla!	2006	M
+Monsters, Inc.	2001	M
+The Grand Budapest Hotel	2014	M
+Ratatouille	2007	M
+Inside Out	2015	M
+The Big Lebowski	1998	M
+Dead Poets Society	1989	M
+Lock, Stock and Two Smoking Barrels	1998	M
+Three Billboards Outside Ebbing, Missouri	2017	M
+Monty Python and the Holy Grail	1975	M
+My Neighbor Totoro	1988	M
+Before Sunrise	1995	M
+Wild Tales	2014	M
+PK	2014	M
+Mary and Max	2009	M
+Mr. Smith Goes to Washington	1939	M
+The Gold Rush	1925	M
+Rang De Basanti	2006	M
+It Happened One Night	1934	M
+Bajrangi Bhaijaan	2015	M
+The General	1926	M
+#genre_crime	Crime Movies	Top rated crime
+The Godfather	1972	M
+The Dark Knight	2008	M
+The Godfather Part II	1974	M
+12 Angry Men	1957	M
+Fight Club	1999	M
+Pulp Fiction	1994	M
+Punjab '95	2026	M
+Mirror Game	2016	M
+GoodFellas	1990	M
+Kill Bill: The Whole Bloody Affair	2004	M
+Seven	1995	M
+The Silence of the Lambs	1991	M
+The Green Mile	1999	M
+City of God	2002	M
+Jai Bhim	2021	M
+Nayakan	1987	M
+The Departed	2006	M
+Léon: The Professional	1994	M
+American History X	1998	M
+The Usual Suspects	1995	M
+Dear Zachary: A Letter to a Son About His Father	2008	M
+The Dark Knight Rises	2012	M
+Witness for the Prosecution	1957	M
+High and Low	1963	M
+The Cove	2009	M
+Kaithi	2019	M
+Drishyam	2013	M
+Drishyam 2	2021	M
+Anniyan	2005	M
+Black Friday	2004	M
+Scarface	1983	M
+Heat	1995	M
+Once Upon a Time in America	1984	M
+M	1931	M
+Double Indemnity	1944	M
+Vikram	2022	M
+Maharaja	2024	M
+Ratsasan	2018	M
+Sardar Udham	2021	M
+The Wolf of Wall Street	2013	M
+Batman Begins	2005	M
+Kill Bill: Vol. 1	2003	M
+No Country for Old Men	2007	M
+Reservoir Dogs	1992	M
+Taxi Driver	1976	M
+Snatch	2000	M
+Prisoners	2013	M
+A Clockwork Orange	1971	M
+L.A. Confidential	1997	M
+Casino	1995	M
+To Kill a Mockingbird	1962	M
+The Sting	1973	M
+K.G.F: Chapter 2	2022	M
+Dhurandhar	2025	M
+Andhadhun	2018	M
+Gangs of Wasseypur	2012	M
+Drishyam	2015	M
+Inside Job	2010	M
+Hera Pheri	2000	M
+Dhurandhar: The Revenge	2026	M
+#genre_documentary	Documentary Movies	Top rated documentary
+David Attenborough: A Life on Our Planet	2020	M
+20 Days in Mariupol	2023	M
+Dear Zachary: A Letter to a Son About His Father	2008	M
+Baraka	1992	M
+Senna	2010	M
+The Cove	2009	M
+Samsara	2011	M
+The Salt of the Earth	2014	M
+Man with a Movie Camera	1929	M
+Hoop Dreams	1994	M
+Won't You Be My Neighbor?	2018	M
+Inside Job	2010	M
+Searching for Sugar Man	2012	M
+No Other Land	2024	M
+Koyaanisqatsi	1982	M
+The Act of Killing	2012	M
+They Shall Not Grow Old	2018	M
+13th	2016	M
+Free Solo	2018	M
+Blackfish	2013	M
+My Octopus Teacher	2020	M
+What Is a Woman?	2022	M
+Seaspiracy	2021	M
+Before the Flood	2016	M
+Apollo 11	2019	M
+Cowspiracy: The Sustainability Secret	2014	M
+Hearts of Darkness: A Filmmaker's Apocalypse	1991	M
+Sicko	2007	M
+Waltz with Bashir	2008	M
+Citizenfour	2014	M
+Going Clear: Scientology & the Prison of Belief	2015	M
+Endless Corridor	2014	M
+The King of Kong: A Fistful of Quarters	2007	M
+Jodorowsky's Dune	2013	M
+The Fog of War	2003	M
+Taylor Swift: The Eras Tour	2023	M
+Bowling for Columbine	2002	M
+Exit Through the Gift Shop	2010	M
+Icarus	2017	M
+Touching the Void	2003	M
+Black Hawk Down	1997	M
+The Thin Blue Line	1988	M
+Navalny	2022	M
+Amy	2015	M
+Food, Inc.	2008	M
+Jiro Dreams of Sushi	2011	M
+The Dissident	2020	M
+Grizzly Man	2005	M
+Man on Wire	2008	M
+14 Peaks: Nothing Is Impossible	2021	M
+The Social Dilemma	2020	M
+Religulous	2008	M
+Three Identical Strangers	2018	M
+Jim & Andy: The Great Beyond	2017	M
+Capturing the Friedmans	2003	M
+Fahrenheit 9/11	2004	M
+March of the Penguins	2005	M
+Cobain: Montage of Heck	2015	M
+Roger & Me	1989	M
+Where to Invade Next	2015	M
+#genre_drama	Drama Movies	Top rated drama
+The Shawshank Redemption	1994	M
+The Godfather	1972	M
+The Lord of the Rings: The Return of the King	2003	M
+Schindler's List	1993	M
+The Godfather Part II	1974	M
+12 Angry Men	1957	M
+The Lord of the Rings: The Fellowship of the Ring	2001	M
+Fight Club	1999	M
+Forrest Gump	1994	M
+Pulp Fiction	1994	M
+The Lord of the Rings: The Two Towers	2002	M
+The Good, the Bad and the Ugly	1966	M
+Punjab '95	2026	M
+GoodFellas	1990	M
+12th Fail	2023	M
+777 Charlie	2022	M
+Seven	1995	M
+The Silence of the Lambs	1991	M
+Saving Private Ryan	1998	M
+The Green Mile	1999	M
+One Flew Over the Cuckoo's Nest	1975	M
+City of God	2002	M
+Life Is Beautiful	1997	M
+It's a Wonderful Life	1946	M
+Seven Samurai	1954	M
+Jai Bhim	2021	M
+Soorarai Pottru	2020	M
+Harakiri	1962	M
+Rocketry: The Nambi Effect	2022	M
+Anbe Sivam	2003	M
+Nayakan	1987	M
+Django Unchained	2012	M
+Gladiator	2000	M
+The Prestige	2006	M
+The Departed	2006	M
+Léon: The Professional	1994	M
+American History X	1998	M
+The Lion King	1994	M
+The Usual Suspects	1995	M
+Parasite	2019	M
+Whiplash	2014	M
+The Intouchables	2011	M
+The Pianist	2002	M
+Psycho	1960	M
+Casablanca	1942	M
+The Kashmir Files	2022	M
+Grave of the Fireflies	1988	M
+Once Upon a Time in the West	1968	M
+Cinema Paradiso	1988	M
+Modern Times	1936	M
+City Lights	1931	M
+Sita Ramam	2022	M
+Mahavatar Narsimha	2024	M
+Jersey	2019	M
+Inglourious Basterds	2009	M
+The Shining	1980	M
+Good Will Hunting	1997	M
+Dune: Part Two	2024	M
+Apocalypse Now	1979	M
+Coco	2017	M
+#genre_family	Family Movies	Top rated family
+Spirited Away	2001	M
+It's a Wonderful Life	1946	M
+WALL·E	2008	M
+Like Stars on Earth	2007	M
+Hi Nanna	2023	M
+Howl's Moving Castle	2004	M
+The Kid	1921	M
+Children of Heaven	1997	M
+Harry Potter and the Deathly Hallows: Part 2	2011	M
+The Wizard of Oz	1939	M
+Hachi: A Dog's Tale	2009	M
+The Sound of Music	1965	M
+The Wild Robot	2024	M
+Chak De! India	2007	M
+Wolf Children	2012	M
+The Circus	1928	M
+A Christmas Carol	1951	M
+Beauty and the Beast	1991	M
+The Princess Bride	1987	M
+Castle in the Sky	1986	M
+The Tale of The Princess Kaguya	2013	M
+Fiddler on the Roof	1971	M
+Harry Potter and the Prisoner of Azkaban	2004	M
+E.T. the Extra-Terrestrial	1982	M
+The Nightmare Before Christmas	1993	M
+Wonder	2017	M
+A Christmas Story	1983	M
+The Ten Commandments	1956	M
+Miracle on 34th Street	1947	M
+Kes	1969	M
+Home Alone	1990	M
+Coraline	2009	M
+Willy Wonka & the Chocolate Factory	1971	M
+Mary Poppins	1964	M
+Kiki's Delivery Service	1989	M
+Flow	2024	M
+The Sandlot	1993	M
+Paddington 2	2017	M
+October Sky	1999	M
+Whisper of the Heart	1995	M
+The Muppet Christmas Carol	1992	M
+Veer Zaara	2004	M
+English Vinglish	2012	M
+Harry Potter and the Sorcerer's Stone	2001	M
+Harry Potter and the Goblet of Fire	2005	M
+Harry Potter and the Deathly Hallows: Part 1	2010	M
+The Goonies	1985	M
+Fantasia	1940	M
+Kapoor & Sons	2016	M
+How Green Was My Valley	1941	M
+Harry Potter and the Half-Blood Prince	2009	M
+The Little Mermaid	1989	M
+Snow White and the Seven Dwarfs	1937	M
+Finding Neverland	2004	M
+When Marnie Was There	2014	M
+The Muppet Movie	1979	M
+A Little Princess	1995	M
+Harry Potter and the Chamber of Secrets	2002	M
+Harry Potter and the Order of the Phoenix	2007	M
+Hugo	2011	M
+#genre_fantasy	Fantasy Movies	Top rated fantasy
+The Lord of the Rings: The Return of the King	2003	M
+The Lord of the Rings: The Fellowship of the Ring	2001	M
+The Lord of the Rings: The Two Towers	2002	M
+Star Wars: Episode V - The Empire Strikes Back	1980	M
+Star Wars: Episode IV - A New Hope	1977	M
+The Green Mile	1999	M
+It's a Wonderful Life	1946	M
+The Odyssey	2026	M
+Your Name.	2016	M
+Demon Slayer: Kimetsu no Yaiba - Tsuzumi Mansion Arc	2021	M
+Star Wars: Episode VI - Return of the Jedi	1983	M
+Princess Mononoke	1997	M
+Pan's Labyrinth	2006	M
+Tumbbad	2018	M
+Pirates of the Caribbean: The Curse of the Black Pearl	2003	M
+Spider-Man: No Way Home	2021	M
+Harry Potter and the Deathly Hallows: Part 2	2011	M
+Monty Python and the Holy Grail	1975	M
+The Wizard of Oz	1939	M
+The Seventh Seal	1957	M
+OMG: Oh My God!	2012	M
+A Christmas Carol	1951	M
+Ugetsu	1953	M
+Groundhog Day	1993	M
+Beauty and the Beast	1991	M
+Pink Floyd: The Wall	1982	M
+Underground	1995	M
+A Matter of Life and Death	1946	M
+Avatar	2009	M
+Harry Potter and the Prisoner of Azkaban	2004	M
+Life of Pi	2012	M
+Zack Snyder's Justice League	2021	M
+Big Fish	2003	M
+Wings of Desire	1987	M
+Harvey	1950	M
+The Exterminating Angel	1962	M
+Beauty and the Beast	1946	M
+The Hobbit: An Unexpected Journey	2012	M
+The Hobbit: The Desolation of Smaug	2013	M
+The Curious Case of Benjamin Button	2008	M
+Edward Scissorhands	1990	M
+Ghostbusters	1984	M
+About Time	2013	M
+Let the Right One In	2008	M
+The Man from Earth	2007	M
+Mary Poppins	1964	M
+Kiki's Delivery Service	1989	M
+The Fall	2006	M
+Nosferatu	1922	M
+Jujutsu Kaisen 0	2021	M
+Karthikeya 2	2022	M
+Millennium Actress	2001	M
+To the Forest of Firefly Lights	2011	M
+Harry Potter and the Sorcerer's Stone	2001	M
+Star Wars: Episode III - Revenge of the Sith	2005	M
+Harry Potter and the Goblet of Fire	2005	M
+Harry Potter and the Deathly Hallows: Part 1	2010	M
+Being John Malkovich	1999	M
+Mr. Nobody	2009	M
+South Park: Bigger, Longer & Uncut	1999	M
+#genre_history	History Movies	Top rated history
+Schindler's List	1993	M
+Tosun Pasha	1976	M
+The Salt of the Earth	2014	M
+Hamilton	2020	M
+Judgment at Nuremberg	1961	M
+Sardar Udham	2021	M
+Won't You Be My Neighbor?	2018	M
+Oppenheimer	2023	M
+Downfall	2004	M
+Uri: The Surgical Strike	2019	M
+Ayla: The Daughter of War	2017	M
+Pather Panchali	1955	M
+They Shall Not Grow Old	2018	M
+13th	2016	M
+12 Years a Slave	2013	M
+Hacksaw Ridge	2016	M
+Hotel Rwanda	2004	M
+I'm Still Here	2024	M
+The Passion of Joan of Arc	1928	M
+The Message	1976	M
+Inherit the Wind	1960	M
+Apollo 11	2019	M
+The King's Speech	2010	M
+Gandhi	1982	M
+JFK	1991	M
+Special 26	2013	M
+Andrei Rublev	1966	M
+Quo Vadis, Aida?	2020	M
+Endless Corridor	2014	M
+Vizontele	2001	M
+The Fog of War	2003	M
+All the President's Men	1976	M
+Battleship Potemkin	1925	M
+Airlift	2016	M
+Kagemusha: The Shadow Warrior	1980	M
+A Taxi Driver	2017	M
+The Leopard	1963	M
+Dunkirk	2017	M
+All Quiet on the Western Front	2022	M
+Hidden Figures	2016	M
+Straight Outta Compton	2015	M
+Tombstone	1993	M
+The Insider	1999	M
+Glory	1989	M
+Hamnet	2025	M
+The Killing Fields	1984	M
+Land of Mine	2015	M
+The Lion in Winter	1968	M
+Argo	2012	M
+Black Hawk Down	2001	M
+Apollo 13	1995	M
+The Trial of the Chicago 7	2020	M
+The Last Emperor	1987	M
+Malcolm X	1992	M
+The Longest Day	1962	M
+Zulu	1964	M
+The Promised Land	2023	M
+A Man for All Seasons	1966	M
+Bridge of Spies	2015	M
+The Thin Red Line	1998	M
+#genre_horror	Horror Movies	Top rated horror
+The Silence of the Lambs	1991	M
+Psycho	1960	M
+The Shining	1980	M
+Alien	1979	M
+Aliens	1986	M
+The Thing	1982	M
+Tumbbad	2018	M
+Jaws	1975	M
+The Exorcist	1973	M
+Diabolique	1955	M
+Rosemary's Baby	1968	M
+The Cabinet of Dr. Caligari	1920	M
+What Ever Happened to Baby Jane?	1962	M
+The Blue Elephant	2014	M
+King Kong	1933	M
+Get Out	2017	M
+Shaun of the Dead	2004	M
+Predator	1987	M
+Obsession	2025	M
+Let the Right One In	2008	M
+Night of the Living Dead	1968	M
+Dawn of the Dead	1978	M
+Nosferatu	1922	M
+Bride of Frankenstein	1935	M
+Freaks	1932	M
+Onibaba	1964	M
+Halloween	1978	M
+Frankenstein	1931	M
+Invasion of the Body Snatchers	1956	M
+The Innocents	1961	M
+Resident Evil	2026	M
+American Psycho	2000	M
+Saw	2004	M
+The Others	2001	M
+Train to Busan	2016	M
+The Fly	1986	M
+The Birds	1963	M
+What We Do in the Shadows	2014	M
+Evil Dead II	1987	M
+Godzilla	1954	M
+The Invisible Man	1933	M
+Peeping Tom	1960	M
+Eyes Without a Face	1960	M
+One Cut of the Dead	2017	M
+Zombieland	2009	M
+A Quiet Place	2018	M
+The Conjuring	2013	M
+28 Days Later	2002	M
+Sinners	2025	M
+Interview with the Vampire: The Vampire Chronicles	1994	M
+Tucker and Dale vs Evil	2010	M
+Grindhouse	2007	M
+The Omen	1976	M
+An American Werewolf in London	1981	M
+The Wicker Man	1973	M
+Funny Games	1997	M
+Repulsion	1965	M
+Stree	2018	M
+Deep Red	1975	M
+Cure	1997	M
+#genre_music	Music Movies	Top rated music
+Whiplash	2014	M
+The Pianist	2002	M
+Amadeus	1984	M
+Samsara	2011	M
+Some Like It Hot	1959	M
+Searching for Sugar Man	2012	M
+Koyaanisqatsi	1982	M
+The Red Shoes	1948	M
+Autumn Sonata	1978	M
+Farewell My Concubine	1993	M
+La La Land	2016	M
+CODA	2021	M
+Pink Floyd: The Wall	1982	M
+The Legend of 1900	1998	M
+Taylor Swift: The Eras Tour	2023	M
+Bohemian Rhapsody	2018	M
+This Is Spinal Tap	1984	M
+Sing Street	2016	M
+The Chorus	2004	M
+Gully Boy	2019	M
+Fitzcarraldo	1982	M
+Walk the Line	2005	M
+Once	2006	M
+Three Colors: Blue	1993	M
+Cabaret	1972	M
+Amy	2015	M
+Rockstar	2011	M
+All That Jazz	1979	M
+A Night at the Opera	1935	M
+Cleo from 5 to 7	1962	M
+Sound of Metal	2019	M
+Ray	2004	M
+Billy Elliot	2000	M
+The Broken Circle Breakdown	2012	M
+Hedwig and the Angry Inch	2001	M
+Secret Superstar	2017	M
+A Star Is Born	2018	M
+Control	2007	M
+Shine	1996	M
+The Double Life of Véronique	1991	M
+The Commitments	1991	M
+The Red Violin	1998	M
+Joyeux Noel	2005	M
+Nashville	1975	M
+Kneecap	2024	M
+Victor/Victoria	1982	M
+The Piano	1993	M
+La Vie En Rose	2007	M
+The Piano Teacher	2001	M
+Cold War	2018	M
+The Producers	1967	M
+The Adventures of Priscilla, Queen of the Desert	1994	M
+Better Man	2024	M
+Cobain: Montage of Heck	2015	M
+High Fidelity	2000	M
+Begin Again	2013	M
+Inside Llewyn Davis	2013	M
+August Rush	2007	M
+Tár	2022	M
+Love & Mercy	2014	M
+#genre_mystery	Mystery Movies	Top rated mystery
+Mirror Game	2016	M
+Seven	1995	M
+Harakiri	1962	M
+The Prestige	2006	M
+The Usual Suspects	1995	M
+Psycho	1960	M
+Memento	2000	M
+Apocalypse Now	1979	M
+Rear Window	1954	M
+The Lives of Others	2006	M
+Witness for the Prosecution	1957	M
+High and Low	1963	M
+Drishyam	2013	M
+Drishyam 2	2021	M
+Oldboy	2003	M
+Incendies	2010	M
+M	1931	M
+Vikram	2022	M
+Ratsasan	2018	M
+Shutter Island	2010	M
+The Sixth Sense	1999	M
+A Beautiful Mind	2001	M
+Prisoners	2013	M
+L.A. Confidential	1997	M
+The Thing	1982	M
+Citizen Kane	1941	M
+Vertigo	1958	M
+North by Northwest	1959	M
+The Father	2020	M
+The Secret in Their Eyes	2009	M
+Andhadhun	2018	M
+Drishyam	2015	M
+Drishyam 2	2022	M
+Gone Girl	2014	M
+Chinatown	1974	M
+Memories of Murder	2003	M
+Dial M for Murder	1954	M
+Rashomon	1950	M
+The Third Man	1949	M
+Kahaani	2012	M
+Talvar	2015	M
+Article 15	2019	M
+Donnie Darko	2001	M
+Blade Runner 2049	2017	M
+The Bourne Ultimatum	2007	M
+12 Monkeys	1995	M
+The Invisible Guest	2016	M
+Rebecca	1940	M
+Infernal Affairs	2002	M
+Three Colors: Red	1994	M
+Anatomy of a Murder	1959	M
+The Cabinet of Dr. Caligari	1920	M
+The Tashkent Files	2019	M
+Arrival	2016	M
+Mystic River	2003	M
+Mulholland Drive	2001	M
+Rope	1948	M
+Talk to Her	2002	M
+Notorious	1946	M
+Solaris	1972	M
+#genre_romance	Romance Movies	Top rated romance
+Forrest Gump	1994	M
+Life Is Beautiful	1997	M
+Casablanca	1942	M
+Cinema Paradiso	1988	M
+Modern Times	1936	M
+City Lights	1931	M
+Good Will Hunting	1997	M
+96	2018	M
+The Best of Youth	2003	M
+Eternal Sunshine of the Spotless Mind	2004	M
+Singin' in the Rain	1952	M
+The Apartment	1960	M
+Dil Bechara	2020	M
+Chhichhore	2019	M
+Hi Nanna	2023	M
+Amélie	2001	M
+Vertigo	1958	M
+Gone with the Wind	1939	M
+Some Like It Hot	1959	M
+The Secret in Their Eyes	2009	M
+Before Sunrise	1995	M
+Before Sunset	2004	M
+The Handmaiden	2016	M
+Wild Strawberries	1957	M
+It Happened One Night	1934	M
+Barfi!	2012	M
+The Best Years of Our Lives	1946	M
+Sherlock Jr.	1924	M
+Sunrise	1927	M
+To Be or Not to Be	1942	M
+The Red Shoes	1948	M
+The Circus	1928	M
+Raise the Red Lantern	1991	M
+I Want to Eat Your Pancreas	2018	M
+Farewell My Concubine	1993	M
+A Short Film About Love	1988	M
+Jo Jeeta Wohi Sikandar	1992	M
+A Moment to Remember	2004	M
+Safety Last!	1923	M
+Titanic	1997	M
+Slumdog Millionaire	2008	M
+The Graduate	1967	M
+Cinderella Man	2005	M
+In the Mood for Love	2000	M
+Rebecca	1940	M
+Roman Holiday	1953	M
+Portrait of a Lady on Fire	2019	M
+Three Colors: Red	1994	M
+Spring, Summer, Fall, Winter... and Spring	2003	M
+Dilwale Dulhania Le Jayenge	1995	M
+Dil Chahta Hai	2001	M
+The Legend of 1900	1998	M
+Black Cat, White Cat	1998	M
+Andaz Apna Apna	1994	M
+The Last Picture Show	1971	M
+Lage Raho Munna Bhai	2006	M
+Brief Encounter	1945	M
+The Shop Around the Corner	1940	M
+A Woman Under the Influence	1974	M
+A Matter of Life and Death	1946	M
+#genre_scifi	Sci-Fi Movies	Top rated sci-fi
+Inception	2010	M
+Interstellar	2014	M
+The Matrix	1999	M
+Star Wars: Episode V - The Empire Strikes Back	1980	M
+Terminator 2: Judgment Day	1991	M
+The Prestige	2006	M
+Back to the Future	1985	M
+Avengers: Endgame	2019	M
+Avengers: Infinity War	2018	M
+Alien	1979	M
+Eternal Sunshine of the Spotless Mind	2004	M
+2001: A Space Odyssey	1968	M
+Jurassic Park	1993	M
+A Clockwork Orange	1971	M
+Project Hail Mary	2026	M
+The Thing	1982	M
+Metropolis	1927	M
+V for Vendetta	2005	M
+Mad Max: Fury Road	2015	M
+The Terminator	1984	M
+Logan	2017	M
+Blade Runner	1982	M
+Maanaadu	2021	M
+The Avengers	2012	M
+Deadpool	2016	M
+The Martian	2015	M
+Donnie Darko	2001	M
+12 Monkeys	1995	M
+Spider-Man: Brand New Day	2026	M
+Planet of the Apes	1968	M
+Nausicaä of the Valley of the Wind	1984	M
+Stalker	1979	M
+G.O.R.A.	2004	M
+Iron Man	2008	M
+Arrival	2016	M
+Edge of Tomorrow	2014	M
+X-Men: Days of Future Past	2014	M
+District 9	2009	M
+Her	2013	M
+Star Trek	2009	M
+Children of Men	2006	M
+Zack Snyder's Justice League	2021	M
+E.T. the Extra-Terrestrial	1982	M
+24	2016	M
+Captain America: Civil War	2016	M
+Rogue One: A Star Wars Story	2016	M
+Back to the Future Part II	1989	M
+Moon	2009	M
+Serenity	2005	M
+Brazil	1985	M
+Bride of Frankenstein	1935	M
+Star Wars: Episode VII - The Force Awakens	2015	M
+Captain America: The Winter Soldier	2014	M
+Gravity	2013	M
+X-Men: First Class	2011	M
+Ex Machina	2014	M
+Star Trek Into Darkness	2013	M
+Gattaca	1997	M
+Star Trek II: The Wrath of Khan	1982	M
+The Day the Earth Stood Still	1951	M
+#genre_sport	Sport Movies	Top rated sport
+Jersey	2019	M
+Senna	2010	M
+Sarpatta Parambarai	2021	M
+Hoop Dreams	1994	M
+Children of Heaven	1997	M
+Bhaag Milkha Bhaag	2013	M
+Rocco and His Brothers	1960	M
+Million Dollar Baby	2004	M
+Rocky	1976	M
+Rush	2013	M
+Warrior	2011	M
+Raging Bull	1980	M
+Lagaan: Once Upon a Time in India	2001	M
+Chak De! India	2007	M
+Free Solo	2018	M
+M.S. Dhoni: The Untold Story	2016	M
+The King of Kong: A Fistful of Quarters	2007	M
+The Wrestler	2008	M
+The Hustler	1961	M
+Icarus	2017	M
+Kai Po Che	2013	M
+The World's Fastest Indian	2005	M
+Breaking Away	1979	M
+Moneyball	2011	M
+F1: The Movie	2025	M
+The Blind Side	2009	M
+Creed	2015	M
+The Hurricane	1999	M
+Shelter	2007	M
+Marty Supreme	2025	M
+King Richard	2021	M
+The Iron Claw	2023	M
+42	2013	M
+Rudy	1993	M
+The Big Blue	1988	M
+The Damned United	2009	M
+'83	2021	M
+Waves	2019	M
+Air	2023	M
+Coach Carter	2005	M
+Green Street Hooligans	2005	M
+A League of Their Own	1992	M
+The Natural	1984	M
+Hoosiers	1986	M
+McFarland, USA	2015	M
+The Swimmers	2022	M
+The Greatest Game Ever Played	2005	M
+Schumacher	2021	M
+Jhund	2022	M
+Southpaw	2015	M
+Rocky II	1979	M
+Hustle	2022	M
+Finding Forrester	2000	M
+Major League	1989	M
+Seabiscuit	2003	M
+Searching for Bobby Fischer	1993	M
+Pumping Iron	1977	M
+Unbroken	2014	M
+Caddyshack	1980	M
+Friday Night Lights	2004	M
+#genre_thriller	Thriller Movies	Top rated thriller
+The Dark Knight	2008	M
+Inception	2010	M
+Fight Club	1999	M
+Mirror Game	2016	M
+Kill Bill: The Whole Bloody Affair	2004	M
+The Departed	2006	M
+Parasite	2019	M
+The Dark Knight Rises	2012	M
+Memento	2000	M
+Rear Window	1954	M
+The Lives of Others	2006	M
+Kaithi	2019	M
+Woman in the Dunes	1964	M
+M	1931	M
+Come and See	1985	M
+Shutter Island	2010	M
+Kill Bill: Vol. 1	2003	M
+No Country for Old Men	2007	M
+Reservoir Dogs	1992	M
+The Sixth Sense	1999	M
+Die Hard	1988	M
+Vertigo	1958	M
+The Great Escape	1963	M
+Dhurandhar	2025	M
+Yojimbo	1961	M
+Dhurandhar: The Revenge	2026	M
+Manjummel Boys	2024	M
+Gone Girl	2014	M
+Fargo	1996	M
+Room	2015	M
+Chinatown	1974	M
+Wild Tales	2014	M
+The Handmaiden	2016	M
+On the Waterfront	1954	M
+Blackfish	2013	M
+The Wages of Fear	1953	M
+Kahaani	2012	M
+Rififi	1955	M
+Z	1969	M
+A Man Escaped	1956	M
+Black Swan	2010	M
+The Imitation Game	2014	M
+Kill Bill: Vol. 2	2004	M
+Sin City	2005	M
+Casino Royale	2006	M
+The Bourne Ultimatum	2007	M
+12 Monkeys	1995	M
+Blood Diamond	2006	M
+Amores Perros	2000	M
+JFK	1991	M
+Persona	1966	M
+Elite Squad 2: The Enemy Within	2010	M
+The Cabinet of Dr. Caligari	1920	M
+What Ever Happened to Baby Jane?	1962	M
+Le Samouraï	1967	M
+Pink	2016	M
+Sanjuro	1962	M
+Lucky Baskhar	2024	M
+The Tashkent Files	2019	M
+The Breath	2009	M
+#genre_war	War Movies	Top rated war
+Saving Private Ryan	1998	M
+20 Days in Mariupol	2023	M
+Casablanca	1942	M
+Grave of the Fireflies	1988	M
+Inglourious Basterds	2009	M
+Apocalypse Now	1979	M
+The Great Dictator	1940	M
+Paths of Glory	1957	M
+Braveheart	1995	M
+Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb	1964	M
+Das Boot	1981	M
+Incendies	2010	M
+Come and See	1985	M
+Judgment at Nuremberg	1961	M
+Full Metal Jacket	1987	M
+1917	2019	M
+Pan's Labyrinth	2006	M
+Gone with the Wind	1939	M
+Ran	1985	M
+They Shall Not Grow Old	2018	M
+The Deer Hunter	1978	M
+The Bridge on the River Kwai	1957	M
+Barry Lyndon	1975	M
+The Mountain II	2016	M
+The Best Years of Our Lives	1946	M
+The Battle of Algiers	1966	M
+All Quiet on the Western Front	1930	M
+Tangerines	2013	M
+To Be or Not to Be	1942	M
+A Man Escaped	1956	M
+Army of Shadows	1969	M
+Ugetsu	1953	M
+Platoon	1986	M
+Dara of Jasenovac	2020	M
+Ivan's Childhood	1962	M
+Tae Guk Gi: The Brotherhood of War	2004	M
+Quo Vadis, Aida?	2020	M
+Grand Illusion	1937	M
+Au Revoir Les Enfants	1987	M
+Rome, Open City	1945	M
+Jojo Rabbit	2019	M
+Patton	1970	M
+Doctor Zhivago	1965	M
+Stalag 17	1953	M
+No Man's Land	2001	M
+Kagemusha: The Shadow Warrior	1980	M
+All Quiet on the Western Front	2022	M
+Land of Mine	2015	M
+The Boy in the Striped Pajamas	2008	M
+Empire of the Sun	1987	M
+Beasts of No Nation	2015	M
+The Dirty Dozen	1967	M
+Black Book	2006	M
+The Man Who Would Be King	1975	M
+Zulu	1964	M
+The Breadwinner	2017	M
+Fury	2014	M
+The Thin Red Line	1998	M
+Where Eagles Dare	1968	M
+Religulous	2008	M
+#genre_western	Western Movies	Top rated western
+The Good, the Bad and the Ugly	1966	M
+Django Unchained	2012	M
+Once Upon a Time in the West	1968	M
+Unforgiven	1992	M
+For a Few Dollars More	1965	M
+The Treasure of the Sierra Madre	1948	M
+The Man Who Shot Liberty Valance	1962	M
+The Revenant	2015	M
+Dances with Wolves	1990	M
+The Ox-Bow Incident	1943	M
+A Fistful of Dollars	1964	M
+High Noon	1952	M
+Rio Bravo	1959	M
+The Searchers	1956	M
+The Outlaw Josey Wales	1976	M
+Stagecoach	1939	M
+Hud	1963	M
+Blazing Saddles	1974	M
+Red River	1948	M
+My Darling Clementine	1946	M
+True Grit	2010	M
+Shane	1953	M
+Giant	1956	M
+Jeremiah Johnson	1972	M
+McCabe & Mrs. Miller	1971	M
+The Shootist	1976	M
+Dead Man	1995	M
+Duck, You Sucker!	1971	M
+El Dorado	1966	M
+High Plains Drifter	1973	M
+True Grit	1969	M
+Of Mice and Men	1992	M
+Lone Star	1996	M
+They Call Me Trinity	1970	M
+Pale Rider	1985	M
+The Proposition	2005	M
+Old Henry	2021	M
+My Name Is Nobody	1973	M
+Lucky	2017	M
+Hostiles	2017	M
+Silverado	1985	M
+Django	1966	M
+El Topo	1970	M
+Bone Tomahawk	2015	M
+Brimstone	2016	M
+Hang 'Em High	1968	M
+The Sisters Brothers	2018	M
+The Power of the Dog	2021	M
+Young Guns	1988	M
+City Slickers	1991	M
+The Horse Whisperer	1998	M
+The Harder They Fall	2021	M
+Eddington	2025	M
+Horizon: An American Saga - Chapter 1	2024	M
+The Homesman	2014	M
+¡Three Amigos!	1986	M
+Young Guns II	1990	M
+A Million Ways to Die in the West	2014	M
+#recent_movies	New This Decade	Well rated films from 2020 onwards
+Attack on Titan: The Last Attack	2024	M
+David Attenborough: A Life on Our Planet	2020	M
+Punjab '95	2026	M
+12th Fail	2023	M
+777 Charlie	2022	M
+Jai Bhim	2021	M
+Soorarai Pottru	2020	M
+20 Days in Mariupol	2023	M
+Rocketry: The Nambi Effect	2022	M
+The Kashmir Files	2022	M
+Spider-Man: Across the Spider-Verse	2023	M
+Sita Ramam	2022	M
+Mahavatar Narsimha	2024	M
+Dune: Part Two	2024	M
+The Odyssey	2026	M
+Demon Slayer: Kimetsu No Yaiba Infinity Castle	2025	M
+Drishyam 2	2021	M
+Demon Slayer: Kimetsu no Yaiba - Tsuzumi Mansion Arc	2021	M
+Sarpatta Parambarai	2021	M
+Hamilton	2020	M
+Dil Bechara	2020	M
+Shershaah	2021	M
+Vikram	2022	M
+Maharaja	2024	M
+Chainsaw Man - The Movie: Reze Arc	2025	M
+I Swear	2025	M
+Lost Ladies	2023	M
+Sardar Udham	2021	M
+Hi Nanna	2023	M
+Oppenheimer	2023	M
+Top Gun: Maverick	2022	M
+Project Hail Mary	2026	M
+The Father	2020	M
+K.G.F: Chapter 2	2022	M
+Dhurandhar	2025	M
+Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train	2020	M
+Dhurandhar: The Revenge	2026	M
+No Other Land	2024	M
+Drishyam 2	2022	M
+Manjummel Boys	2024	M
+Spider-Man: No Way Home	2021	M
+The Wild Robot	2024	M
+I'm Still Here	2024	M
+Kantara	2022	M
+My Octopus Teacher	2020	M
+Kantara: A Legend - Chapter 1	2025	M
+What Is a Woman?	2022	M
+Seaspiracy	2021	M
+Major	2022	M
+Maanaadu	2021	M
+Dune	2021	M
+Soul	2020	M
+Spider-Man: Brand New Day	2026	M
+CODA	2021	M
+Farha	2021	M
+Dara of Jasenovac	2020	M
+Wolfwalkers	2020	M
+Lucky Baskhar	2024	M
+Quo Vadis, Aida?	2020	M
+Sirf Ek Bandaa Kaafi Hai	2023	M
+#top_series	IMDb Top Rated Series	The highest rated television of all time
+Breaking Bad	2008	S
+Steel Ball Run: JoJo's Bizarre Adventure	2026	S
+Avatar: The Last Airbender	2005	S
+The Wire	2002	S
+Game of Thrones	2011	S
+The Sopranos	1999	S
+Sapne Vs Everyone	2023	S
+Our Planet	2019	S
+Bluey	2018	S
+The World at War	1973	S
+BB Ki Vines	2015	S
+Attack on Titan	2013	S
+Aspirants	2021	S
+Fullmetal Alchemist: Brotherhood	2009	S
+The Chosen	2017	S
+Gullak	2019	S
+The Filthy Frank Show	2011	S
+Koombiyo	2017	S
+The Legend of Hanuman	2021	S
+The Storks Will Return	2007	S
+Sherlock	2010	S
+Better Call Saul	2015	S
+The Office	2005	S
+Rick and Morty	2013	S
+Arcane	2021	S
+One Piece	1999	S
+Hunter X Hunter	2011	S
+Dexter: Resurrection	2025	S
+Batman: The Animated Series	1992	S
+Panchayat	2020	S
+Bleach: Thousand-Year Blood War	2022	S
+The Twilight Zone	1959	S
+Leyla and Mecnun	2011	S
+Kota Factory	2019	S
+Clarkson's Farm	2021	S
+TVF Pitchers	2015	S
+Sandeep Bhaiya	2023	S
+Only Fools and Horses	1981	S
+As If	2021	S
+Taskmaster	2015	S
+Ramayan	1987	S
+Reply 1988	2015	S
+My Mister	2018	S
+Critical Role	2015	S
+Tash Ma Tash	1993	S
+Farouk Omar	2012	S
+Death Note	2006	S
+Firefly	2002	S
+Gravity Falls	2012	S
+Cowboy Bebop	1998	S
+The Pitt	2025	S
+Vinland Saga	2019	S
+The West Wing	1999	S
+Frieren: Beyond Journey's End	2023	S
+Persona	2018	S
+Nathan for You	2013	S
+NCR Days	2022	S
+Undercover	2011	S
+Yeh Meri Family	2018	S
+Mahabharat	1988	S
+#most_watched_series	Most Watched Series	The shows the most people have rated
+Breaking Bad	2008	S
+Game of Thrones	2011	S
+Stranger Things	2016	S
+The Walking Dead	2010	S
+Friends	1994	S
+Sherlock	2010	S
+The Boys	2019	S
+Dexter	2006	S
+The Big Bang Theory	2007	S
+Better Call Saul	2015	S
+The Office	2005	S
+Peaky Blinders	2013	S
+How I Met Your Mother	2005	S
+Squid Game	2021	S
+True Detective	2014	S
+The Last of Us	2023	S
+Black Mirror	2011	S
+Attack on Titan	2013	S
+Rick and Morty	2013	S
+Lost	2004	S
+Prison Break	2005	S
+The Mandalorian	2019	S
+Vikings	2013	S
+The Witcher	2019	S
+Money Heist	2017	S
+House	2004	S
+The Sopranos	1999	S
+House of the Dragon	2022	S
+House of Cards	2013	S
+Dark	2017	S
+Westworld	2016	S
+Suits	2011	S
+Supernatural	2005	S
+Modern Family	2009	S
+Daredevil	2015	S
+Narcos	2015	S
+Wednesday	2022	S
+Death Note	2006	S
+Loki	2021	S
+Fargo	2014	S
+Mr. Robot	2015	S
+The Simpsons	1989	S
+Ted Lasso	2020	S
+Arrow	2012	S
+Arcane	2021	S
+Avatar: The Last Airbender	2005	S
+South Park	1997	S
+The Lord of the Rings: The Rings of Power	2022	S
+The Wire	2002	S
+Brooklyn Nine-Nine	2013	S
+Severance	2022	S
+Mindhunter	2017	S
+Sex Education	2019	S
+Fallout	2024	S
+Ozark	2017	S
+Lucifer	2016	S
+Family Guy	1999	S
+The Vampire Diaries	2009	S
+Seinfeld	1989	S
+The Flash	2014	S
+#series_decade_1970	1970s Television	Top rated shows that began in the 1970s
+The World at War	1973	S
+Fawlty Towers	1975	S
+El Chavo	1972	S
+Mind Your Language	1977	S
+M*A*S*H	1972	S
+The Muppet Show	1976	S
+Top Gear	1978	S
+All in the Family	1971	S
+Columbo	1971	S
+The Mary Tyler Moore Show	1970	S
+The Rockford Files	1974	S
+Saturday Night Live	1975	S
+WKRP in Cincinnati	1978	S
+Are You Being Served?	1972	S
+Sanford and Son	1972	S
+The New Tom & Jerry Show	1975	S
+Taxi	1978	S
+Little House on the Prairie	1974	S
+Three's Company	1976	S
+The Waltons	1972	S
+The Jeffersons	1975	S
+Happy Days	1974	S
+Space: 1999	1975	S
+Battlestar Galactica	1978	S
+Mork & Mindy	1978	S
+Dallas	1978	S
+The Dukes of Hazzard	1979	S
+The Six Million Dollar Man	1974	S
+Kojak	1973	S
+The Incredible Hulk	1977	S
+Starsky and Hutch	1975	S
+Wonder Woman	1975	S
+Buck Rogers in the 25th Century	1979	S
+Diff'rent Strokes	1978	S
+Hart to Hart	1979	S
+Charlie's Angels	1976	S
+Fantasy Island	1977	S
+CHiPs	1977	S
+The Love Boat	1977	S
+#series_decade_1980	1980s Television	Top rated shows that began in the 1980s
+Only Fools and Horses	1981	S
+Ramayan	1987	S
+Mahabharat	1988	S
+Seinfeld	1989	S
+Dragon Ball Z	1989	S
+Blackadder Goes Forth	1989	S
+Star Trek: The Next Generation	1987	S
+The Adventures of Sherlock Holmes	1984	S
+The Return of Sherlock Holmes	1986	S
+The Simpsons	1989	S
+Poirot	1989	S
+Blackadder II	1986	S
+Blackadder the Third	1987	S
+Mystery Science Theater 3000	1988	S
+Yes Minister	1980	S
+Yes, Prime Minister	1986	S
+Dragon Ball	1986	S
+Red Dwarf	1988	S
+'Allo 'Allo!	1982	S
+Saint Seiya	1986	S
+The Kids in the Hall	1988	S
+The Wonder Years	1988	S
+Police Squad!	1982	S
+The Bugs Bunny/Looney Tunes Comedy Hour	1985	S
+A Bit of Fry and Laurie	1987	S
+The Golden Girls	1985	S
+Quantum Leap	1989	S
+The Young Ones	1982	S
+Inspector Morse	1987	S
+Hill Street Blues	1981	S
+Married... with Children	1987	S
+Cheers	1982	S
+The Black Adder	1983	S
+DuckTales	1987	S
+Tales from the Crypt	1989	S
+Transformers	1984	S
+The Hitch Hiker's Guide to the Galaxy	1981	S
+Teenage Mutant Ninja Turtles	1987	S
+Thundercats	1985	S
+Night Court	1984	S
+The Twilight Zone	1985	S
+MacGyver	1985	S
+Miami Vice	1984	S
+Moonlighting	1985	S
+Chip 'n' Dale Rescue Rangers	1989	S
+He-Man and the Masters of the Universe	1983	S
+The Real Ghostbusters	1986	S
+The A-Team	1983	S
+Magnum, P.I.	1980	S
+Gummi Bears	1985	S
+ALF	1986	S
+The Cosby Show	1984	S
+Pingu	1980	S
+Murder, She Wrote	1984	S
+Family Ties	1982	S
+V	1984	S
+Remington Steele	1982	S
+The Smurfs	1981	S
+21 Jump Street	1987	S
+Garfield and Friends	1988	S
+#series_decade_1990	1990s Television	Top rated shows that began in the 1990s
+The Sopranos	1999	S
+One Piece	1999	S
+Batman: The Animated Series	1992	S
+Tash Ma Tash	1993	S
+Cowboy Bebop	1998	S
+The West Wing	1999	S
+Friends	1994	S
+Dragon Ball Z	1996	S
+Berserk	1997	S
+South Park	1997	S
+Twin Peaks	1990	S
+Freaks and Geeks	1999	S
+Oz	1997	S
+Homicide: Life on the Street	1993	S
+The X-Files	1993	S
+Mr. Bean	1990	S
+Father Ted	1995	S
+I'm Alan Partridge	1997	S
+Brass Eye	1997	S
+Hunter x Hunter	1999	S
+Futurama	1999	S
+Neon Genesis Evangelion	1995	S
+Dragon Ball	1995	S
+Spaced	1999	S
+Whose Line Is It Anyway?	1998	S
+Rurouni Kenshin	1996	S
+Detective Conan	1996	S
+Yu Yu Hakusho: Ghost Files	1992	S
+Great Teacher Onizuka	1999	S
+The Larry Sanders Show	1992	S
+Stargate SG-1	1997	S
+X-Men	1992	S
+Spider-Man: The Animated Series	1994	S
+Babylon 5	1993	S
+Northern Exposure	1990	S
+My So-Called Life	1994	S
+The New Batman Adventures	1997	S
+Jeeves and Wooster	1990	S
+The League of Gentlemen	1999	S
+Mr. Show with Bob and David	1995	S
+The Adventures of Pete & Pete	1992	S
+Buffy the Vampire Slayer	1997	S
+Courage the Cowardly Dog	1999	S
+The Daily Show	1996	S
+The Adventures of Tintin	1991	S
+Bottom	1991	S
+SpongeBob SquarePants	1999	S
+Frasier	1993	S
+Farscape	1999	S
+Trigun	1998	S
+Absolutely Fabulous	1992	S
+The Kingdom	1994	S
+Late Night with Conan O'Brien	1993	S
+Are You Afraid of the Dark?	1990	S
+In Living Color	1990	S
+Home Movies	1999	S
+The Royle Family	1998	S
+Family Guy	1999	S
+That '70s Show	1998	S
+Law & Order: Special Victims Unit	1999	S
+#series_decade_2000	2000s Television	Top rated shows that began in the 2000s
+Breaking Bad	2008	S
+Avatar: The Last Airbender	2005	S
+The Wire	2002	S
+Fullmetal Alchemist: Brotherhood	2009	S
+The Storks Will Return	2007	S
+The Office	2005	S
+Death Note	2006	S
+Firefly	2002	S
+Still Game	2002	S
+It's Always Sunny in Philadelphia	2005	S
+Curb Your Enthusiasm	2000	S
+Chappelle's Show	2003	S
+Monster	2004	S
+Sarabhai V/S Sarabhai	2004	S
+Fighting Spirit	2000	S
+House	2004	S
+Mad Men	2007	S
+Naruto: Shippuden	2007	S
+Rome	2005	S
+Battlestar Galactica	2004	S
+Six Feet Under	2001	S
+Top Gear	2002	S
+Code Geass: Lelouch of the Rebellion	2006	S
+The Shield	2002	S
+Friday Night Lights	2006	S
+Peep Show	2003	S
+The Thick of It	2005	S
+Justice League Unlimited	2004	S
+Gintama	2005	S
+Dexter	2006	S
+Arrested Development	2003	S
+Parks and Recreation	2009	S
+Archer	2009	S
+Deadwood	2004	S
+Ezel	2009	S
+QI	2003	S
+The Venture Bros.	2003	S
+The European Side	2004	S
+Foyle's War	2002	S
+Modern Family	2009	S
+Sons of Anarchy	2008	S
+Community	2009	S
+Doctor Who	2005	S
+The IT Crowd	2006	S
+Star Wars: The Clone Wars	2008	S
+The Office	2001	S
+Fullmetal Alchemist	2003	S
+Flight of the Conchords	2007	S
+Samurai Jack	2001	S
+Samurai Champloo	2004	S
+Trailer Park Boys	2001	S
+Justice League	2001	S
+Boston Legal	2004	S
+Coupling	2000	S
+The Boondocks	2005	S
+Southland	2009	S
+RuPaul's Drag Race	2009	S
+Queer as Folk	2000	S
+Ghost in the Shell: Stand Alone Complex	2002	S
+Barareh Nights	2005	S
+#series_decade_2010	2010s Television	Top rated shows that began in the 2010s
+Game of Thrones	2011	S
+Our Planet	2019	S
+Bluey	2018	S
+BB Ki Vines	2015	S
+Attack on Titan	2013	S
+The Chosen	2017	S
+Gullak	2019	S
+The Filthy Frank Show	2011	S
+Koombiyo	2017	S
+Sherlock	2010	S
+Better Call Saul	2015	S
+Rick and Morty	2013	S
+Hunter X Hunter	2011	S
+Leyla and Mecnun	2011	S
+Kota Factory	2019	S
+TVF Pitchers	2015	S
+Taskmaster	2015	S
+Reply 1988	2015	S
+My Mister	2018	S
+Critical Role	2015	S
+Farouk Omar	2012	S
+Gravity Falls	2012	S
+Vinland Saga	2019	S
+Persona	2018	S
+Nathan for You	2013	S
+Undercover	2011	S
+Yeh Meri Family	2018	S
+True Detective	2014	S
+Fargo	2014	S
+Succession	2018	S
+BoJack Horseman	2014	S
+Last Week Tonight with John Oliver	2014	S
+Steins; Gate	2011	S
+Behzat Ç: An Ankara Detective Story	2010	S
+Flames	2018	S
+Black Sun	2017	S
+Peaky Blinders	2013	S
+Black Mirror	2011	S
+Dark	2017	S
+Narcos	2015	S
+Fleabag	2016	S
+Downton Abbey	2010	S
+This Is Us	2016	S
+Adventure Time	2010	S
+The Grand Tour	2016	S
+Line of Duty	2012	S
+Haikyuu!!	2014	S
+Mr Inbetween	2018	S
+Halka	2019	S
+The Bureau	2015	S
+The Untamed	2019	S
+Mahabharat	2013	S
+Pew News	2018	S
+Mr. Sunshine	2018	S
+Umbre	2014	S
+Content Cop	2015	S
+Stranger Things	2016	S
+The Mandalorian	2019	S
+House of Cards	2013	S
+Daredevil	2015	S
+#series_decade_2020	2020s Television	Top rated shows that began in the 2020s
+Steel Ball Run: JoJo's Bizarre Adventure	2026	S
+Sapne Vs Everyone	2023	S
+Aspirants	2021	S
+The Legend of Hanuman	2021	S
+Arcane	2021	S
+Dexter: Resurrection	2025	S
+Panchayat	2020	S
+Bleach: Thousand-Year Blood War	2022	S
+Clarkson's Farm	2021	S
+Sandeep Bhaiya	2023	S
+As If	2021	S
+The Pitt	2025	S
+Frieren: Beyond Journey's End	2023	S
+NCR Days	2022	S
+Dhindora	2021	S
+Rocket Boys	2022	S
+Twinkling Watermelon	2023	S
+Harga	2021	S
+Ted Lasso	2020	S
+Invincible	2021	S
+Heated Rivalry	2025	S
+Blue Eye Samurai	2023	S
+X-Men '97	2024	S
+Alchemy of Souls	2022	S
+How to with John Wilson	2020	S
+Hospital Playlist	2020	S
+Severance	2022	S
+Andor	2022	S
+A Knight of the Seven Kingdoms	2026	S
+Shōgun	2024	S
+The Apothecary Diaries	2023	S
+The Owl House	2020	S
+All Creatures Great & Small	2020	S
+Mouse	2021	S
+Campus Diaries	2022	S
+Very Parivarik	2024	S
+Lord of Mysteries	2025	S
+Shoresy	2022	S
+Adventure Time: Fionna & Cake	2023	S
+The Bear	2022	S
+Jujutsu Kaisen	2020	S
+Solo Leveling	2024	S
+Heartstopper	2022	S
+Special OPS	2020	S
+The Rehearsal	2022	S
+Smiling Friends	2020	S
+Star Wars: Maul - Shadow Lord	2026	S
+Pantheon	2022	S
+Lucky Guy	2023	S
+Common Side Effects	2024	S
+Bandish Bandits	2020	S
+Flower of Evil	2020	S
+The Prince	2023	S
+Mr. Queen	2020	S
+Like There's No Tomorrow	2024	S
+Sixer	2022	S
+Made in India: A Titan Story	2026	S
+Staged	2020	S
+To Be Hero X	2025	S
+The Last of Us	2023	S
+#series_genre_action	Action Series	Top rated action television
+Steel Ball Run: JoJo's Bizarre Adventure	2026	S
+Avatar: The Last Airbender	2005	S
+Attack on Titan	2013	S
+Fullmetal Alchemist: Brotherhood	2009	S
+The Legend of Hanuman	2021	S
+Arcane	2021	S
+One Piece	1999	S
+Hunter X Hunter	2011	S
+Batman: The Animated Series	1992	S
+Bleach: Thousand-Year Blood War	2022	S
+Cowboy Bebop	1998	S
+Vinland Saga	2019	S
+Undercover	2011	S
+Mahabharat	1988	S
+Dragon Ball Z	1996	S
+Dragon Ball Z	1989	S
+Berserk	1997	S
+Fighting Spirit	2000	S
+Invincible	2021	S
+Naruto: Shippuden	2007	S
+Rome	2005	S
+Battlestar Galactica	2004	S
+Star Trek: The Next Generation	1987	S
+Adventure Time	2010	S
+Code Geass: Lelouch of the Rebellion	2006	S
+Blue Eye Samurai	2023	S
+X-Men '97	2024	S
+Alchemy of Souls	2022	S
+Halka	2019	S
+Justice League Unlimited	2004	S
+Gintama	2005	S
+The Untamed	2019	S
+Mr. Sunshine	2018	S
+The Mandalorian	2019	S
+Daredevil	2015	S
+Shōgun	2024	S
+One Punch Man	2015	S
+Archer	2009	S
+Justified	2010	S
+The Family Man	2019	S
+Regular Show	2010	S
+JoJo's Bizarre Adventure	2012	S
+Young Justice	2010	S
+Primal	2019	S
+The Venture Bros.	2003	S
+The Owl House	2020	S
+Mouse	2021	S
+Lord of Mysteries	2025	S
+Moon Lovers: Scarlet Heart Ryeo	2016	S
+Shoresy	2022	S
+Hunter x Hunter	1999	S
+Adventure Time: Fionna & Cake	2023	S
+The Boys	2019	S
+Vikings	2013	S
+Demon Slayer: Kimetsu no Yaiba	2019	S
+Jujutsu Kaisen	2020	S
+Person of Interest	2011	S
+The Last Kingdom	2015	S
+Star Wars: The Clone Wars	2008	S
+Solo Leveling	2024	S
+#series_genre_animation	Animation Series	Top rated animation television
+Steel Ball Run: JoJo's Bizarre Adventure	2026	S
+Avatar: The Last Airbender	2005	S
+Bluey	2018	S
+Attack on Titan	2013	S
+Fullmetal Alchemist: Brotherhood	2009	S
+The Legend of Hanuman	2021	S
+Rick and Morty	2013	S
+Arcane	2021	S
+One Piece	1999	S
+Hunter X Hunter	2011	S
+Batman: The Animated Series	1992	S
+Bleach: Thousand-Year Blood War	2022	S
+Death Note	2006	S
+Gravity Falls	2012	S
+Cowboy Bebop	1998	S
+Vinland Saga	2019	S
+Frieren: Beyond Journey's End	2023	S
+BoJack Horseman	2014	S
+Dragon Ball Z	1996	S
+Dragon Ball Z	1989	S
+Steins; Gate	2011	S
+Berserk	1997	S
+Monster	2004	S
+Fighting Spirit	2000	S
+South Park	1997	S
+Invincible	2021	S
+Naruto: Shippuden	2007	S
+Adventure Time	2010	S
+Code Geass: Lelouch of the Rebellion	2006	S
+Blue Eye Samurai	2023	S
+X-Men '97	2024	S
+Haikyuu!!	2014	S
+Justice League Unlimited	2004	S
+Gintama	2005	S
+The Simpsons	1989	S
+One Punch Man	2015	S
+Archer	2009	S
+Regular Show	2010	S
+JoJo's Bizarre Adventure	2012	S
+Your Lie in April	2014	S
+Young Justice	2010	S
+Primal	2019	S
+The Venture Bros.	2003	S
+The Apothecary Diaries	2023	S
+The Owl House	2020	S
+Lord of Mysteries	2025	S
+Hilda	2018	S
+Hunter x Hunter	1999	S
+Adventure Time: Fionna & Cake	2023	S
+Futurama	1999	S
+Demon Slayer: Kimetsu no Yaiba	2019	S
+Jujutsu Kaisen	2020	S
+Star Wars: The Clone Wars	2008	S
+Solo Leveling	2024	S
+Neon Genesis Evangelion	1995	S
+Fullmetal Alchemist	2003	S
+Dragon Ball	1995	S
+Dragon Ball	1986	S
+Mob Psycho 100	2016	S
+Samurai Jack	2001	S
+#series_genre_comedy	Comedy Series	Top rated comedy television
+Bluey	2018	S
+BB Ki Vines	2015	S
+Gullak	2019	S
+The Filthy Frank Show	2011	S
+The Storks Will Return	2007	S
+The Office	2005	S
+Rick and Morty	2013	S
+Panchayat	2020	S
+Leyla and Mecnun	2011	S
+Kota Factory	2019	S
+Clarkson's Farm	2021	S
+TVF Pitchers	2015	S
+Only Fools and Horses	1981	S
+As If	2021	S
+Taskmaster	2015	S
+Reply 1988	2015	S
+Tash Ma Tash	1993	S
+Gravity Falls	2012	S
+Frieren: Beyond Journey's End	2023	S
+Nathan for You	2013	S
+Yeh Meri Family	2018	S
+Still Game	2002	S
+Friends	1994	S
+Seinfeld	1989	S
+Succession	2018	S
+It's Always Sunny in Philadelphia	2005	S
+BoJack Horseman	2014	S
+Curb Your Enthusiasm	2000	S
+Dhindora	2021	S
+Fawlty Towers	1975	S
+Last Week Tonight with John Oliver	2014	S
+Steins; Gate	2011	S
+Monty Python's Flying Circus	1969	S
+Chappelle's Show	2003	S
+Blackadder Goes Forth	1989	S
+Behzat Ç: An Ankara Detective Story	2010	S
+Flames	2018	S
+Sarabhai V/S Sarabhai	2004	S
+Fighting Spirit	2000	S
+Twinkling Watermelon	2023	S
+Ted Lasso	2020	S
+South Park	1997	S
+Fleabag	2016	S
+This Is Us	2016	S
+Six Feet Under	2001	S
+Freaks and Geeks	1999	S
+Top Gear	2002	S
+The Grand Tour	2016	S
+Peep Show	2003	S
+Haikyuu!!	2014	S
+Mr Inbetween	2018	S
+The Thick of It	2005	S
+Gintama	2005	S
+El Chavo	1972	S
+How to with John Wilson	2020	S
+Pew News	2018	S
+Content Cop	2015	S
+Hospital Playlist	2020	S
+The Simpsons	1989	S
+Arrested Development	2003	S
+#series_genre_crime	Crime Series	Top rated crime television
+Breaking Bad	2008	S
+The Wire	2002	S
+The Sopranos	1999	S
+Koombiyo	2017	S
+The Storks Will Return	2007	S
+Sherlock	2010	S
+Better Call Saul	2015	S
+Dexter: Resurrection	2025	S
+Death Note	2006	S
+Persona	2018	S
+Undercover	2011	S
+True Detective	2014	S
+Fargo	2014	S
+Monster	2004	S
+Behzat Ç: An Ankara Detective Story	2010	S
+Black Sun	2017	S
+Peaky Blinders	2013	S
+Black Mirror	2011	S
+Dark	2017	S
+Narcos	2015	S
+Twin Peaks	1990	S
+Oz	1997	S
+The Shield	2002	S
+Line of Duty	2012	S
+Mr Inbetween	2018	S
+Halka	2019	S
+The Adventures of Sherlock Holmes	1984	S
+Homicide: Life on the Street	1993	S
+The Return of Sherlock Holmes	1986	S
+Umbre	2014	S
+Content Cop	2015	S
+Dexter	2006	S
+Daredevil	2015	S
+Mindhunter	2017	S
+The X-Files	1993	S
+Justified	2010	S
+Deadwood	2004	S
+The Family Man	2019	S
+The Bridge	2011	S
+Poirot	1989	S
+The Jinx: The Life and Deaths of Robert Durst	2015	S
+Gomorrah	2014	S
+Ezel	2009	S
+Endeavour	2012	S
+Wentworth	2013	S
+Foyle's War	2002	S
+Mouse	2021	S
+The Boys	2019	S
+Mr. Robot	2015	S
+Sons of Anarchy	2008	S
+Hannibal	2013	S
+Boardwalk Empire	2010	S
+Person of Interest	2011	S
+Making a Murderer	2015	S
+Bosch	2014	S
+Sacred Games	2018	S
+Twin Peaks	2017	S
+Happy Valley	2014	S
+Trailer Park Boys	2001	S
+Boston Legal	2004	S
+#series_genre_documentary	Documentary Series	Top rated documentary television
+Our Planet	2019	S
+The World at War	1973	S
+Clarkson's Farm	2021	S
+Nathan for You	2013	S
+How to with John Wilson	2020	S
+The Jinx: The Life and Deaths of Robert Durst	2015	S
+Through the Wormhole	2010	S
+Making a Murderer	2015	S
+Formula 1: Drive to Survive	2019	S
+The Rehearsal	2022	S
+Chef's Table	2015	S
+Top Gear	1978	S
+Prehistoric Planet	2022	S
+MythBusters	2003	S
+An Idiot Abroad	2010	S
+Inside Look: The People v. O.J. Simpson - American Crime Story	2016	S
+Welcome to Wrexham	2022	S
+Penn & Teller: Bullshit!	2003	S
+Dirty Money	2018	S
+Sunderland 'Til I Die	2018	S
+Rise of Empires: Ottoman	2020	S
+Explained	2018	S
+The Staircase	2004	S
+Deadliest Catch	2005	S
+Mr. McMahon	2024	S
+Inside Look: The Assassination of Gianni Versace - American Crime Story	2017	S
+Tiger King	2020	S
+Unsolved Mysteries	2020	S
+Ancient Apocalypse	2022	S
+Ghost Adventures	2008	S
+Untold	2021	S
+Worst Roommate Ever	2022	S
+Roman Empire	2016	S
+Ancient Aliens	2009	S
+Murdaugh Murders: A Southern Scandal	2023	S
+Alexander: The Making of a God	2024	S
+Harry & Meghan	2022	S
+Too Hot to Handle	2020	S
+Fabulous Lives of Bollywood Wives	2020	S
+The Pogmentary	2022	S
+#series_genre_drama	Drama Series	Top rated drama television
+Breaking Bad	2008	S
+The Wire	2002	S
+Game of Thrones	2011	S
+The Sopranos	1999	S
+Sapne Vs Everyone	2023	S
+Aspirants	2021	S
+The Chosen	2017	S
+Gullak	2019	S
+Koombiyo	2017	S
+The Storks Will Return	2007	S
+Sherlock	2010	S
+Better Call Saul	2015	S
+Dexter: Resurrection	2025	S
+Panchayat	2020	S
+The Twilight Zone	1959	S
+Leyla and Mecnun	2011	S
+Kota Factory	2019	S
+TVF Pitchers	2015	S
+Sandeep Bhaiya	2023	S
+Ramayan	1987	S
+Reply 1988	2015	S
+My Mister	2018	S
+Tash Ma Tash	1993	S
+Farouk Omar	2012	S
+Death Note	2006	S
+The Pitt	2025	S
+The West Wing	1999	S
+Persona	2018	S
+NCR Days	2022	S
+Undercover	2011	S
+Yeh Meri Family	2018	S
+Mahabharat	1988	S
+True Detective	2014	S
+Fargo	2014	S
+Succession	2018	S
+BoJack Horseman	2014	S
+Dhindora	2021	S
+Steins; Gate	2011	S
+Monster	2004	S
+Behzat Ç: An Ankara Detective Story	2010	S
+Flames	2018	S
+Rocket Boys	2022	S
+Twinkling Watermelon	2023	S
+Black Sun	2017	S
+Harga	2021	S
+Peaky Blinders	2013	S
+Black Mirror	2011	S
+House	2004	S
+Dark	2017	S
+Narcos	2015	S
+Mad Men	2007	S
+Fleabag	2016	S
+Twin Peaks	1990	S
+Downton Abbey	2010	S
+Rome	2005	S
+Battlestar Galactica	2004	S
+This Is Us	2016	S
+Six Feet Under	2001	S
+Freaks and Geeks	1999	S
+Star Trek: The Next Generation	1987	S
+#series_genre_fantasy	Fantasy Series	Top rated fantasy television
+Game of Thrones	2011	S
+The Twilight Zone	1959	S
+Critical Role	2015	S
+Twinkling Watermelon	2023	S
+Mister Rogers' Neighborhood	1968	S
+Alchemy of Souls	2022	S
+Stranger Things	2016	S
+The Mandalorian	2019	S
+Andor	2022	S
+A Knight of the Seven Kingdoms	2026	S
+Moon Lovers: Scarlet Heart Ryeo	2016	S
+What We Do in the Shadows	2019	S
+Lucky Guy	2023	S
+Mushi-Shi	2005	S
+Mr. Queen	2020	S
+The Angry Video Game Nerd	2004	S
+To Be Hero X	2025	S
+Supernatural	2005	S
+Pushing Daisies	2007	S
+Carnivàle	2003	S
+Ghosts	2019	S
+The Dark Crystal: Age of Resistance	2019	S
+Death's Game	2023	S
+Signal	2016	S
+Lost	2004	S
+Outlander	2014	S
+The Leftovers	2014	S
+Chainsaw Man	2022	S
+The Mighty Boosh	2003	S
+One Hundred Years of Solitude	2024	S
+Oshi No Ko	2023	S
+The Disastrous Life of Saiki K.	2016	S
+Wonderfalls	2004	S
+Loki	2021	S
+The Good Place	2016	S
+The Originals	2013	S
+Penny Dreadful	2014	S
+Forever	2014	S
+Undone	2019	S
+Legend of Zang Hai	2025	S
+The Kingdom	1994	S
+Are You Afraid of the Dark?	1990	S
+While You Were Sleeping	2017	S
+Summer Time Rendering	2022	S
+Misfits	2009	S
+Dead Like Me	2003	S
+Rascal Does Not Dream of Bunny Girl Senpai	2018	S
+The King: Eternal Monarch	2020	S
+My Love from Another Star	2013	S
+Galavant	2015	S
+Legend of the Blue Sea	2016	S
+Ashes to Ashes	2008	S
+The Outer Limits	1963	S
+Wednesday	2022	S
+Lucifer	2016	S
+Good Omens	2019	S
+Tales from the Crypt	1989	S
+Bon Appetit, Your Majesty	2025	S
+The Uncanny Counter	2020	S
+That Mitchell and Webb Look	2006	S
+#series_genre_mystery	Mystery Series	Top rated mystery television
+Sherlock	2010	S
+Dexter: Resurrection	2025	S
+Persona	2018	S
+True Detective	2014	S
+Black Mirror	2011	S
+Dark	2017	S
+Twin Peaks	1990	S
+Line of Duty	2012	S
+The Adventures of Sherlock Holmes	1984	S
+Homicide: Life on the Street	1993	S
+The Return of Sherlock Holmes	1986	S
+Dexter	2006	S
+Severance	2022	S
+Mindhunter	2017	S
+The Bridge	2011	S
+Poirot	1989	S
+Endeavour	2012	S
+Foyle's War	2002	S
+The Expanse	2015	S
+Alfred Hitchcock Presents	1955	S
+Flower of Evil	2020	S
+Westworld	2016	S
+Fringe	2008	S
+Big Little Lies	2017	S
+Luther	2010	S
+The Americans	2013	S
+Psych	2006	S
+Asur: Welcome to Your Dark Side	2020	S
+Utopia	2013	S
+Carnivàle	2003	S
+Unforgotten	2015	S
+The Killing	2007	S
+The Prisoner	1967	S
+Steins;Gate 0	2018	S
+Stranger	2017	S
+Homeland	2011	S
+Taboo	2017	S
+Broadchurch	2013	S
+The Killing	2011	S
+The Leftovers	2014	S
+The Good Wife	2009	S
+Veronica Mars	2004	S
+MythBusters	2003	S
+Columbo	1971	S
+Life on Mars	2006	S
+Shetland	2013	S
+Perry Mason	1957	S
+The Mentalist	2008	S
+Sense8	2015	S
+The Glory	2022	S
+Life	2007	S
+Vera	2011	S
+Hustle	2004	S
+Murdoch Mysteries	2008	S
+Inspector Lewis	2006	S
+Inspector Morse	1987	S
+The Rockford Files	1974	S
+Hill Street Blues	1981	S
+Wire in the Blood	2002	S
+Criminal Minds	2005	S
+#series_genre_scifi	Sci-Fi Series	Top rated sci-fi television
+Firefly	2002	S
+Severance	2022	S
+Mystery Science Theater 3000	1988	S
+Doctor Who	2005	S
+The Expanse	2015	S
+Westworld	2016	S
+Fringe	2008	S
+Star Trek	1966	S
+Utopia	2013	S
+Red Dwarf	1988	S
+The Prisoner	1967	S
+The Handmaid's Tale	2017	S
+Orphan Black	2013	S
+Sense8	2015	S
+Star Trek: Strange New Worlds	2022	S
+Better Off Ted	2009	S
+Legion	2017	S
+For All Mankind	2019	S
+The Orville	2017	S
+Travelers	2016	S
+Counterpart	2017	S
+Harvey Birdman, Attorney at Law	2000	S
+The Hitch Hiker's Guide to the Galaxy	1981	S
+American Horror Story	2011	S
+Pluribus	2025	S
+The Man in the High Castle	2015	S
+Humans	2015	S
+3rd Rock from the Sun	1996	S
+Upload	2020	S
+Dollhouse	2009	S
+Extraordinary	2023	S
+Beforeigners	2019	S
+Foundation	2021	S
+See	2019	S
+Dark Matter	2024	S
+Continuum	2012	S
+Flashforward	2009	S
+Stargate Universe	2009	S
+The Devil's Hour	2022	S
+The Time Traveler's Wife	2022	S
+Project Blue Book	2019	S
+Agents of S.H.I.E.L.D.	2013	S
+The Peripheral	2022	S
+Raised by Wolves	2020	S
+The Last Ship	2014	S
+ALF	1986	S
+Tales from the Loop	2020	S
+Sliders	1995	S
+Mars	2016	S
+Second Chance	2016	S
+Halo	2022	S
+The 4400	2004	S
+Touch	2012	S
+Motherland: Fort Salem	2020	S
+V	1984	S
+Paper Girls	2022	S
+Better Than Us	2018	S
+Space: 1999	1975	S
+The Hot Zone	2019	S
+Defying Gravity	2009	S
+#series_genre_thriller	Thriller Series	Top rated thriller television
+Breaking Bad	2008	S
+The Wire	2002	S
+Koombiyo	2017	S
+Fargo	2014	S
+Black Sun	2017	S
+Oz	1997	S
+The Shield	2002	S
+The Bureau	2015	S
+Umbre	2014	S
+House of Cards	2013	S
+The Bridge	2011	S
+Gomorrah	2014	S
+Ezel	2009	S
+Wentworth	2013	S
+Mr. Robot	2015	S
+Sons of Anarchy	2008	S
+Happy Valley	2014	S
+Special OPS	2020	S
+Southland	2009	S
+Ozark	2017	S
+Top Boy	2011	S
+Mumbai Diaries	2021	S
+Weak Hero Class 1	2022	S
+The Handmaid's Tale	2017	S
+Taboo	2017	S
+Slow Horses	2022	S
+Orphan Black	2013	S
+Mayor of Kingstown	2021	S
+Bad Sisters	2022	S
+The Glory	2022	S
+Rogue Heroes	2022	S
+Caliphate	2020	S
+Blue Lights	2023	S
+Breathe	2018	S
+Patriot	2015	S
+Apharan	2018	S
+Exit	2019	S
+The Testaments	2026	S
+The Walking Dead	2010	S
+The Fall	2013	S
+Legion	2017	S
+Tokyo Vice	2022	S
+Strike Back	2010	S
+Blue Lock	2022	S
+Leverage: Redemption	2021	S
+Cat	2022	S
+Reacher	2022	S
+The Diplomat	2023	S
+The Mechanism	2018	S
+Counterpart	2017	S
+The Unit	2006	S
+Quarry	2016	S
+Candy	2021	S
+The Terminal List	2022	S
+The Man in the High Castle	2015	S
+Task	2025	S
+9-1-1	2018	S
+Leverage	2008	S
+Furious	2026	S
+Abhay	2019	S
