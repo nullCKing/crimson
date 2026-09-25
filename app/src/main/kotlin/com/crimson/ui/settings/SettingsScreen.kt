@@ -31,7 +31,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -62,6 +61,12 @@ class SettingsActions(
     val onRefreshEpg: () -> Unit,
     val onExtraEpgSources: (Boolean) -> Unit,
     val onLivePreviews: (Boolean) -> Unit,
+    val onCaptions: (Boolean) -> Unit,
+    val onCaptionSize: (Int) -> Unit,
+    val onCaptionBackground: () -> Unit,
+    val onSoundDescriptions: (Boolean) -> Unit,
+    val onDialogueBoost: () -> Unit,
+    val onBrightness: (Int) -> Unit,
     val onRebuildCatalogue: () -> Unit,
     val onSwitchProfile: () -> Unit,
     val onEditProfile: () -> Unit,
@@ -72,6 +77,7 @@ private enum class Section(val label: String, val icon: ImageVector) {
     LIVE("Live TV", CrimsonIcons.LiveTv),
     GUIDE("Guide Data", CrimsonIcons.Guide),
     LIBRARY("Movies & Shows", CrimsonIcons.Movie),
+    CAPTIONS("Audio & Subtitles", CrimsonIcons.ClosedCaption),
     PLAYBACK("Playback", CrimsonIcons.Play),
     HELP("Remote & Help", CrimsonIcons.Info),
 }
@@ -85,8 +91,8 @@ private enum class Section(val label: String, val icon: ImageVector) {
  * country's categories. The rows say so rather than leaving the viewer to wonder.
  */
 @Composable
-fun SettingsScreen(ui: UiState, actions: SettingsActions) {
-    var section by rememberSaveable { mutableStateOf(Section.PROFILE) }
+fun SettingsScreen(ui: UiState, actions: SettingsActions, initialSection: Int = 0) {
+    var section by rememberSaveable { mutableStateOf(Section.entries[initialSection]) }
     val first = remember { FocusRequester() }
     com.crimson.ui.components.InitialFocus(first)
     PageBackground {
@@ -100,7 +106,7 @@ fun SettingsScreen(ui: UiState, actions: SettingsActions) {
                     RailItem(
                         s.label, s.icon, selected = s == section,
                         onFocus = { section = s },
-                        focusRequester = if (index == 0) first else null,
+                        focusRequester = if (index == initialSection) first else null,
                     )
                     Spacer(Modifier.height(4.dp))
                 }
@@ -116,6 +122,7 @@ fun SettingsScreen(ui: UiState, actions: SettingsActions) {
                         Section.LIVE -> item { LiveSection(ui, actions) }
                         Section.GUIDE -> item { GuideSection(ui, actions) }
                         Section.LIBRARY -> item { LibrarySection(ui, actions) }
+                        Section.CAPTIONS -> item { CaptionsSection(ui, actions) }
                         Section.PLAYBACK -> item { PlaybackSection(ui, actions) }
                         Section.HELP -> item { HelpSection() }
                     }
@@ -130,7 +137,7 @@ private fun ProfileSection(ui: UiState, actions: SettingsActions) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ui.profile?.let { p ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
-                Avatar(p.avatar, 64.dp, Modifier.clip(RoundedCornerShape(8.dp)))
+                Avatar(p.avatar, 64.dp)
                 Spacer(Modifier.width(16.dp))
                 Column {
                     Text(p.name, style = CrimsonType.Title)
@@ -261,6 +268,73 @@ private fun LibrarySection(ui: UiState, actions: SettingsActions) {
 }
 
 @Composable
+private fun CaptionsSection(ui: UiState, actions: SettingsActions) {
+    val s = ui.settings
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionTitle("Captions")
+        ToggleRow(
+            label = "Captions (English)",
+            checked = s.captions,
+            detail = "From the video when it has them; otherwise found online and synced to the dialogue as it plays. " +
+                "Live channels show their broadcast captions when they send them. While watching, ▼ or ≡ opens this too.",
+            onToggle = { actions.onCaptions(!s.captions) },
+        )
+        ChoiceRow(
+            label = "Caption size",
+            value = s.captionSize.label,
+            detail = "Left and Right change it.",
+            onLeft = { actions.onCaptionSize(-1) },
+            onRight = { actions.onCaptionSize(+1) },
+        )
+        ToggleRow(
+            label = "Dark box behind captions",
+            checked = s.captionBackground,
+            detail = "The easiest to read. Off draws an outline around the letters instead.",
+            onToggle = actions.onCaptionBackground,
+        )
+        ToggleRow(
+            label = "Include sound descriptions",
+            checked = s.captionSoundDescriptions,
+            detail = "[door slams], (laughs) and speaker names, as closed captions have them. Off shows only what is said.",
+            onToggle = { actions.onSoundDescriptions(!s.captionSoundDescriptions) },
+        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(92.dp)
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF3A4A5C), Color(0xFF1B232C))), RoundedCornerShape(8.dp)),
+        ) {
+            com.crimson.ui.player.CaptionSample(s.captionSize, s.captionBackground, Modifier.fillMaxSize())
+        }
+        Text(
+            if (ui.hasSubtitleKey) "Online captions come from OpenSubtitles.com, using the key this app was built with."
+            else "Online captions come from OpenSubtitles through its public Stremio service. Building the app with an " +
+                "OpenSubtitles API key (see the README) gives better matching.",
+            style = CrimsonType.Caption,
+        )
+
+        Spacer(Modifier.height(6.dp))
+        SectionTitle("Sound")
+        ToggleRow(
+            label = "Dialogue boost",
+            checked = s.dialogueBoost,
+            detail = "Makes voices clearer and turns loud effects and music down, so the volume can stay where the dialogue is audible.",
+            onToggle = actions.onDialogueBoost,
+        )
+
+        Spacer(Modifier.height(6.dp))
+        SectionTitle("Picture")
+        ChoiceRow(
+            label = "Video brightness",
+            value = "${s.videoBrightness}%",
+            detail = "Dims full-screen video only, down to 5% for a dark room; menus and captions are not dimmed. Left and Right adjust.",
+            onLeft = { actions.onBrightness(-1) },
+            onRight = { actions.onBrightness(+1) },
+        )
+    }
+}
+
+@Composable
 private fun PlaybackSection(ui: UiState, actions: SettingsActions) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionTitle("Stream format")
@@ -278,8 +352,8 @@ private fun HelpSection() {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionTitle("Remote")
         Help("Browsing", "Arrows move, OK opens, BACK goes back. On Home, BACK returns to the top of the page first.")
-        Help("Movies and shows", "OK pauses and plays. LEFT and RIGHT skip 10 seconds; REWIND and FAST FORWARD skip 30.")
-        Help("Live TV", "UP and DOWN change channel. OK opens the guide. PLAY/PAUSE returns to the last channel. INFO shows what's on.")
+        Help("Movies and shows", "OK pauses and plays. LEFT and RIGHT skip 10 seconds; REWIND and FAST FORWARD skip 30. DOWN or MENU opens captions, dialogue boost and brightness.")
+        Help("Live TV", "UP and DOWN change channel. OK opens the guide. PLAY/PAUSE returns to the last channel. INFO shows what's on. MENU opens captions, dialogue boost and brightness.")
         Help("Guide", "REWIND and FAST FORWARD move two hours. PLAY/PAUSE stars a channel. Type a channel number to jump to it.")
         Help("Sports", "Select any game to search the live channels for the network showing it.")
         Help("Mouse", "Hover to highlight, click to select, scroll the wheel to change channel.")
@@ -306,8 +380,7 @@ private fun RailItem(label: String, icon: ImageVector, selected: Boolean, onFocu
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
+            .background(bg, RoundedCornerShape(8.dp))
             .tvInteractive(onSelect = onFocus, onFocus = { focused = it; if (it) onFocus() }, focusRequester = focusRequester)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -330,8 +403,7 @@ private fun RowShell(
     Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
+            .background(bg, RoundedCornerShape(8.dp))
             .border(if (focused) 2.dp else 0.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(8.dp))
             .tvInteractive(onSelect = onSelect, onFocus = { focused = it }, onLeft = onLeft, onRight = onRight)
             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -357,13 +429,12 @@ private fun Switch(on: Boolean) {
     Box(
         Modifier
             .size(40.dp, 22.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (on) Crimson.Red else Crimson.SurfaceHigh)
+            .background(if (on) Crimson.Red else Crimson.SurfaceHigh, RoundedCornerShape(50))
             .border(1.dp, Crimson.Stroke, RoundedCornerShape(50))
             .padding(3.dp),
         contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
-        Box(Modifier.size(16.dp).clip(CircleShape).background(Color.White))
+        Box(Modifier.size(16.dp).background(Color.White, CircleShape))
     }
 }
 
@@ -400,6 +471,26 @@ private fun StepperRow(label: String, value: Int, range: IntRange, detail: Strin
                 style = CrimsonType.Title.copy(fontSize = 16.sp),
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
+            Text("▶", style = CrimsonType.Label.copy(color = Crimson.TextTertiary))
+        }
+    }
+}
+
+/** A setting with a few values, stepped with Left and Right (and forward with OK). */
+@Composable
+private fun ChoiceRow(label: String, value: String, detail: String, onLeft: () -> Unit, onRight: () -> Unit) {
+    RowShell(
+        onSelect = onRight,
+        onLeft = { onLeft(); true },
+        onRight = { onRight(); true },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = CrimsonType.Label.copy(fontSize = 14.sp))
+                Text(detail, style = CrimsonType.Caption)
+            }
+            Text("◀", style = CrimsonType.Label.copy(color = Crimson.TextTertiary))
+            Text(value, style = CrimsonType.Title.copy(fontSize = 16.sp), modifier = Modifier.padding(horizontal = 12.dp))
             Text("▶", style = CrimsonType.Label.copy(color = Crimson.TextTertiary))
         }
     }

@@ -5,9 +5,15 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
+import androidx.media3.common.text.Cue
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -52,6 +58,11 @@ class ExoPlayerController(
     private val _state = MutableStateFlow(PlaybackState())
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
+    override val audio = AudioEffects()
+
+    private val _cues = MutableStateFlow<List<Cue>>(emptyList())
+    override val cues: StateFlow<List<Cue>> = _cues.asStateFlow()
+
     private var tunedAtMs: Long = 0L
     private var reconnectAttempt = 0
     private var reconnectStartedAt = 0L
@@ -63,7 +74,7 @@ class ExoPlayerController(
      */
     val exoPlayer: ExoPlayer = ExoPlayer.Builder(appContext)
         .setRenderersFactory(
-            DefaultRenderersFactory(appContext)
+            CrimsonRenderersFactory(appContext, audio)
                 // A Stick Lite decodes 1080p in hardware but a broken stream can put the decoder
                 // in a bad state; falling back to software keeps a channel watchable rather than
                 // showing a black screen.
@@ -96,6 +107,16 @@ class ExoPlayerController(
         .apply {
             playWhenReady = true
             addListener(PlayerEvents())
+            // Captions stay off until asked for; when they are on, English first, then a track
+            // with no language (a broadcast's CEA-608 captions carry none).
+            trackSelectionParameters = trackSelectionParameters.buildUpon()
+                // English audio when a file has a choice: files mark their original language
+                // as the default, so a dual-audio anime would otherwise play in Japanese.
+                .setPreferredAudioLanguage("en")
+                .setPreferredTextLanguage("en")
+                .setSelectUndeterminedTextLanguage(true)
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
         }
 
     // ------------------------------------------------------------------ control
@@ -124,6 +145,12 @@ class ExoPlayerController(
     }
 
     private fun startStream(channel: PlayableChannel, positionMs: Long = channel.startPositionMs) {
+        audio.generation++
+        _cues.value = emptyList()
+        // A track chosen by hand was for the last title.
+        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+            .build()
         if (!channel.isLive && positionMs > 0) {
             exoPlayer.setMediaItem(MediaItem.fromUri(channel.url), positionMs)
         } else {
@@ -166,6 +193,91 @@ class ExoPlayerController(
     }
 
     override fun positionMs(): Long = exoPlayer.currentPosition.coerceAtLeast(0L)
+
+    override fun setEmbeddedCaptions(enabled: Boolean) {
+        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !enabled)
+            .build()
+        if (!enabled) _cues.value = emptyList()
+    }
+
+    override fun setDialogueBoost(enabled: Boolean) {
+        if (audio.dialogueBoost == enabled) return
+        audio.dialogueBoost = enabled
+        // Encoded (passthrough) audio never reaches the processor. The sink now refuses it, but
+        // the renderer only asks again when the stream is prepared, so prepare it again from
+        // where it is: a brief rebuffer, once, and only for a Dolby track.
+        val channel = _state.value.channel ?: return
+        if (enabled && audio.passthrough) {
+            Log.i(TAG, "reloading ${channel.name} to decode its audio for dialogue boost")
+            startStream(channel, if (channel.isLive) 0L else exoPlayer.currentPosition)
+        }
+    }
+
+    override fun selectAudio(id: String) {
+        val (g, t) = id.split(':').mapNotNull(String::toIntOrNull).takeIf { it.size == 2 } ?: return
+        val group = exoPlayer.currentTracks.groups.getOrNull(g)?.takeIf { it.type == C.TRACK_TYPE_AUDIO } ?: return
+        if (t !in 0 until group.length) return
+        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, t))
+            .build()
+    }
+
+    override fun setPreferEnglishAudio(prefer: Boolean) {
+        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+            .apply { if (prefer) setPreferredAudioLanguage("en") else setPreferredAudioLanguages() }
+            .build()
+    }
+
+    /** Every playable audio track, labelled by language and channels, in the file's order. */
+    private fun audioOptions(tracks: Tracks): List<AudioOption> {
+        val out = ArrayList<AudioOption>()
+        tracks.groups.forEachIndexed { g, group ->
+            if (group.type != C.TRACK_TYPE_AUDIO) return@forEachIndexed
+            for (t in 0 until group.length) {
+                if (!group.isTrackSupported(t, true)) continue
+                val format = group.getTrackFormat(t)
+                val language = format.language?.takeIf { it.isNotBlank() && it != "und" }
+                val name = language?.let { java.util.Locale.forLanguageTag(it).getDisplayLanguage(java.util.Locale.ENGLISH).takeIf(String::isNotBlank) ?: it }
+                    ?: format.label?.takeIf { it.isNotBlank() }
+                    ?: "Track ${out.size + 1}"
+                val channels = when (format.channelCount) {
+                    1 -> "Mono"
+                    2 -> "Stereo"
+                    6 -> "5.1"
+                    8 -> "7.1"
+                    else -> null
+                }
+                val extra = format.label?.takeIf { it.isNotBlank() && language != null && !it.equals(name, ignoreCase = true) }
+                out += AudioOption(
+                    id = "$g:$t",
+                    label = listOfNotNull(name, extra, channels).joinToString(" · "),
+                    language = language,
+                    selected = group.isTrackSelected(t),
+                )
+            }
+        }
+        return out
+    }
+
+    override fun setVolume(level: Float) {
+        exoPlayer.volume = level.coerceIn(0f, 1f)
+    }
+
+    override fun videoFrameRate(): Double? =
+        exoPlayer.videoFormat?.frameRate?.takeIf { it > 0f }?.toDouble()
+
+    /** Whether the file has an English (or unlabelled) subtitle track, as opposed to broadcast captions. */
+    private fun subtitleTrackIn(tracks: Tracks): Boolean = tracks.groups.any { group ->
+        group.type == C.TRACK_TYPE_TEXT && (0 until group.length).any { i ->
+            val format = group.getTrackFormat(i)
+            val mime = format.sampleMimeType
+            val broadcast = mime == MimeTypes.APPLICATION_CEA608 || mime == MimeTypes.APPLICATION_CEA708 ||
+                mime == MimeTypes.APPLICATION_MP4CEA608
+            val lang = format.language?.lowercase()
+            !broadcast && group.isTrackSupported(i) && (lang == null || lang == "und" || lang.startsWith("en"))
+        }
+    }
 
     override fun durationMs(): Long =
         if (_state.value.channel?.isLive != false) 0L else exoPlayer.duration.takeIf { it > 0 } ?: 0L
@@ -300,6 +412,19 @@ class ExoPlayerController(
                 timeToFirstFrameMs = elapsed,
                 isBuffering = false,
                 isReconnecting = false,
+            )
+        }
+
+        override fun onCues(cueGroup: CueGroup) {
+            _cues.value = cueGroup.cues
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+            if (tracks.groups.isEmpty()) return
+            _state.value = _state.value.copy(
+                tracksKnown = true,
+                hasSubtitleTrack = subtitleTrackIn(tracks),
+                audioTracks = audioOptions(tracks),
             )
         }
 

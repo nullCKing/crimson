@@ -25,19 +25,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.crimson.core.catalog.TitleKind
 import com.crimson.core.sports.Competitor
 import com.crimson.core.sports.EventState
@@ -60,7 +57,8 @@ object CardSize {
     val GameHeight = 128.dp
 }
 
-private val CardShape = RoundedCornerShape(6.dp)
+private val CardCorner = 6.dp
+private val CardShape = RoundedCornerShape(CardCorner)
 
 /** Shared interaction for every card: focus state, select, and the white-ring lift. */
 @Composable
@@ -95,17 +93,11 @@ fun PosterCard(
             .width(width)
             .aspectRatio(2f / 3f)
             .cardInteraction(onClick, onFocus, focusRequester, focused, { focused = it })
-            .clip(CardShape)
-            .background(Brush.verticalGradient(listOf(Crimson.SurfaceHigh, Crimson.Surface))),
+            .background(Brush.verticalGradient(listOf(Crimson.SurfaceHigh, Crimson.Surface)), CardShape),
     ) {
         PosterFallback(tile.name, tile.kind)
         if (!tile.poster.isNullOrBlank()) {
-            AsyncImage(
-                model = tile.poster,
-                contentDescription = tile.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            RoundedImage(tile.poster, tile.name, CardCorner, Modifier.fillMaxSize())
         }
     }
 }
@@ -176,20 +168,18 @@ fun ContinueCard(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .cardInteraction(onClick, onFocus, focusRequester, focused, { focused = it }, scale = 1.06f)
-                .clip(CardShape)
-                .background(Crimson.SurfaceHigh),
+                .background(Crimson.SurfaceHigh, CardShape),
         ) {
             val image = tile.backdrop ?: tile.image
             if (!image.isNullOrBlank()) {
-                AsyncImage(image, tile.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                RoundedImage(image, tile.name, CardCorner, Modifier.fillMaxSize())
             }
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f)), CardShape))
             Box(
                 Modifier
                     .align(Alignment.Center)
                     .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = if (focused) 0.2f else 0.45f)),
+                    .background(Color.Black.copy(alpha = if (focused) 0.2f else 0.45f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(CrimsonIcons.Play, null, tint = Color.White, modifier = Modifier.size(22.dp))
@@ -226,13 +216,10 @@ fun LiveCard(
             .width(width)
             .aspectRatio(16f / 9f)
             .cardInteraction(onClick, onFocus, focusRequester, focused, { focused = it }, scale = 1.07f)
-            .clip(CardShape)
-            .background(
-                Brush.linearGradient(
+            .background(Brush.linearGradient(
                     if (focused) listOf(Color(0xFF2E2E36), Color(0xFF17171B))
                     else listOf(Crimson.SurfaceHigh, Crimson.Surface)
-                )
-            ),
+                ), CardShape),
     ) {
         ChannelLogo(
             url = tile.logo,
@@ -294,12 +281,14 @@ fun GameCard(
             .width(CardSize.GameWidth)
             .height(CardSize.GameHeight)
             .cardInteraction(onClick, onFocus, focusRequester, focused, { focused = it }, scale = 1.06f)
-            .clip(CardShape)
-            .background(Brush.linearGradient(listOf(teamTint(event.away), Crimson.Surface, teamTint(event.home))))
+            .background(Brush.linearGradient(listOf(teamTint(event.away), Crimson.Surface, teamTint(event.home))), CardShape)
             .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(event.league.label, style = CrimsonType.Overline.copy(color = Crimson.TextSecondary, fontSize = 9.sp))
+            Text(
+                event.league.label + (event.division?.let { " · $it" } ?: ""),
+                style = CrimsonType.Overline.copy(color = Crimson.TextSecondary, fontSize = 9.sp),
+            )
             Spacer(Modifier.weight(1f))
             when (event.state) {
                 EventState.LIVE -> {
@@ -335,11 +324,17 @@ private fun TeamLine(team: Competitor?, state: EventState) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
             if (!team.logoUrl.isNullOrBlank()) {
-                AsyncImage(team.logoUrl, team.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                LogoImage(team.logoUrl, team.name, Modifier.fillMaxSize())
             }
         }
         Spacer(Modifier.width(8.dp))
         val dim = state == EventState.FINAL && !team.isWinner
+        team.rank?.let { rank ->
+            Text(
+                "$rank ",
+                style = CrimsonType.Caption.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Crimson.Gold),
+            )
+        }
         Text(
             team.shortName,
             style = CrimsonType.Label.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (dim) Crimson.TextTertiary else Crimson.TextPrimary),
@@ -405,15 +400,14 @@ fun EpisodeCard(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .cardInteraction(onClick, onFocus, focusRequester, focused, { focused = it }, scale = 1.06f)
-                .clip(CardShape)
-                .background(Crimson.SurfaceHigh),
+                .background(Crimson.SurfaceHigh, CardShape),
         ) {
             val art = image ?: fallbackImage
             if (!art.isNullOrBlank()) {
-                AsyncImage(art, title, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                RoundedImage(art, title, CardCorner, Modifier.fillMaxSize())
             }
             if (focused) {
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f), CardShape))
                 Icon(CrimsonIcons.Play, null, tint = Color.White, modifier = Modifier.align(Alignment.Center).size(36.dp))
             }
             if (fraction > 0f) {
@@ -483,13 +477,7 @@ fun ChannelLogo(
                 overflow = TextOverflow.Ellipsis,
             )
         } else {
-            AsyncImage(
-                model = url,
-                contentDescription = name,
-                contentScale = ContentScale.Fit,
-                onError = { failed = true },
-                modifier = Modifier.fillMaxSize(),
-            )
+            LogoImage(url, name, Modifier.fillMaxSize(), onError = { failed = true })
         }
     }
 }

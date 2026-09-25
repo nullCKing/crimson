@@ -36,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -51,7 +50,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.crimson.ui.components.Backdrop
 import com.crimson.ui.components.ButtonStyle
 import com.crimson.ui.components.CrimsonButton
@@ -346,9 +344,8 @@ private fun LiveBackdrop(logo: String?) {
             )
     ) {
         if (!logo.isNullOrBlank()) {
-            AsyncImage(
+            com.crimson.ui.components.LogoImage(
                 logo, null,
-                contentScale = ContentScale.Fit,
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 90.dp).size(220.dp, 150.dp),
                 alpha = 0.35f,
             )
@@ -360,8 +357,7 @@ private fun LiveBackdrop(logo: String?) {
 private fun StatusPill(text: String, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .clip(RoundedCornerShape(50))
-            .background(Crimson.SurfaceRaised.copy(alpha = 0.92f))
+            .background(Crimson.SurfaceRaised.copy(alpha = 0.92f), RoundedCornerShape(50))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -393,7 +389,7 @@ private fun GameBackdrop(event: com.crimson.core.sports.SportsEvent) {
             ) {
                 listOfNotNull(event.away?.logoUrl, event.home?.logoUrl).forEachIndexed { i, logo ->
                     if (i > 0) Spacer(Modifier.width(40.dp))
-                    AsyncImage(logo, null, contentScale = ContentScale.Fit, modifier = Modifier.size(150.dp), alpha = 0.5f)
+                    com.crimson.ui.components.LogoImage(logo, null, Modifier.size(150.dp), alpha = 0.5f)
                 }
             }
             Box(Modifier.fillMaxSize().background(Crimson.ScrimLeft))

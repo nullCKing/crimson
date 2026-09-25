@@ -3,10 +3,92 @@
 Written so a session with no memory of this one can pick it up. Read `DECISIONS.md` for why
 things are the way they are.
 
-**Status (2026-09-22): Crimson builds (`gradlew build` green: core tests, 17 screenshot tests,
-lint, minified release), and every page has been driven on an Android TV emulator against the mock
-server, in both the debug and the minified release build. It has not run on a real Fire TV Stick
-or against a real provider's account.**
+**Status (2026-09-25): version 1.3 (`dist/crimson-1.3.apk`, versionCode 4): streaming-app
+player controls, captions no longer doubled, English audio first with a track picker; see
+"Version 1.3" below.**
+
+**Status (2026-09-24, later): version 1.2 (`dist/crimson-1.2.apk`, versionCode 3) adds
+automatic theme-song skipping, per show; see "Version 1.2" below.**
+
+**Status (2026-09-24): version 1.1 (`dist/crimson-1.1.apk`, versionCode 2) adds captions,
+dialogue boost, video brightness, every college game, a fixed search, and smooth edges
+everywhere; see the section below. Verified on an API 25 TV emulator (the closest renderer to
+Fire OS 5 available) against the mock server; not yet on the user's Fire TV, which was not
+reachable over ADB that day.**
+
+**Earlier status (2026-09-22): Crimson builds (`gradlew build` green: core tests, 17 screenshot tests,
+lint, minified release; `gradlew release` verifies the APK installs on Fire OS 5+), every page has
+been driven on an Android TV emulator against the mock server, and it now runs on the user's
+real Fire TV (2nd-gen box, Fire OS 5.2.9.5 / Android 5.1) with their real account.**
+
+### Version 1.3, 2026-09-25
+
+After using 1.2 (installed on the Fire TV by the user): captions were doubled on *Widow's Bay*,
+Down opening a menu felt wrong, and dubbed anime was hard to get. Checked on `crimson_tv_25`:
+
+- Controls: Down shows them (time bar focused), Down again reaches the buttons, Right x3 reaches
+  Audio & Subtitles, OK opens it, Back returns focus to that button; six quick Rights moved the
+  preview 0:30 -> 1:30 and playback jumped there on its own.
+- Captions: a film with a subtitle track in the file (`server.py --captions`, odd ids) shows one
+  box.
+- Audio: `server.py --dual-audio` serves a file with "Japanese" marked default and English
+  second; English played, the menu listed both, choosing Japanese switched to it.
+
+### Version 1.2, 2026-09-24
+
+Theme-song skipping, asked for by show (The Office, South Park, Hunter x Hunter opening and
+ending), automatic. Checked on `crimson_tv_25` with `server.py --themes`:
+
+- Episode 1: skipped 25 -> 55 s by the (mock) database's times.
+- Episodes 2 and 3: themes played; after episode 3 the 30 s opening was learned.
+- Episode 4: opening heard at 1:42.96 (theme starts 1:40), skipped to 2:10.02 (ends 2:10.00),
+  "Skipped the opening theme" shown. After a rewind into episode 3's cold open: turned down
+  1.4 s in, skipped 2.96 s in to 75.02 s (ends 75.00).
+- Ending switched on in the menu, learned from two episodes, then recognised after a seek into
+  the middle of it and skipped to 954.96 s (ends 955.00).
+- Against the real databases on API 25 (no ISRG X2 there): IntroDB and TheIntroDB both answered
+  through the bundled roots.
+- Offline, on the episodes' AAC-decoded audio (`ThemesOnRealAudioTest`): both themes learned from
+  two episodes and skipped in two others, within 25 ms of their ends.
+
+Not done: real episodes of the three shows (the provider's files) and the user's Fire TV, which
+was not reachable over ADB. Hunter x Hunter's ending changes with each arc; each new one is
+learned after two episodes with it.
+
+### Version 1.1, 2026-09-24
+
+Asked for after a few days' use. Built, and checked on the `crimson_tv_25` emulator:
+
+- **Captions** — file track, broadcast 608, or OpenSubtitles with automatic sync; menu in the
+  player (Down/Menu) and a Settings section. Checked: a film with an embedded track shows it; a
+  film without one found its IMDb id in the index (tt6263850), fetched the mock service's file
+  2.7 s early and synced it to +2.8 s after 90 s (captions matched the burned-in line); the
+  release build fetched 9 real English files from the live Stremio service. Live: menu and
+  "shown when broadcast" status; real 608 captions not seen (the mock streams have none).
+- **Dialogue boost** — on the test film, peaks held at −1 dBFS and the loudest 5 s stretch
+  3.6 dB quieter; unit tests cover quiet speech lifted >5 dB and a 15 dB narrower quiet/loud gap.
+  Not listened to. The Dolby-decode path is unexercised (the emulator has no AC-3 decoder).
+- **Video brightness** — 5–100%, video only; checked in the player and on live TV.
+- **Sports** — FBS/FCS/Division I, poll ranks, split rows; checked against the live ESPN feed.
+- **Search** — query kept across a result and back, cleared on leaving, fresh on a new game;
+  symmetric keyboard; caret before the hint. Checked on the emulator.
+- **Edges** — rounded clips removed, `tvInteractive` doubling fixed, smooth logo downscale, no
+  RGB_565, sharper launcher art. Checked by enlarging emulator screenshots.
+
+Not done: nothing on the user's box (ADB offline); no OpenSubtitles key is configured, so the
+REST path is untested against the live API (its JSON parser is unit-tested).
+
+### Fire TV crash, 2026-09-22 (fixed)
+
+On the user's Fire TV (AFTS, Android 5.1) the app died as Home opened after the channel import:
+`SIGSEGV` on `RenderThread` in `libRScpp ScriptIntrinsicBlur::setInput`. Android 5's renderer
+blurs text shadows with RenderScript, which crashes on that device; the wordmark's red glow was
+the first blurred text drawn. Blurred text shadows are now drawn only on Android 9+
+(`BlurredTextShadows`), and the channel-number overlay lost its redundant one. Verified on the
+device: profile → channels → guide → Home with the real account, no crash. Ruled out on the way,
+with the real account's data replayed on the emulator (`--snapshot`) and a 65k-film synthetic
+catalogue (`--big`): API levels used by app and `core` (all ≤ 21), SQLite features and variable
+limits, memory (live Java heap 11–27 MB, peak 66 MB PSS), timezone, screen density.
 
 ## Crimson, 2026-09-22: the fork and the redesign
 

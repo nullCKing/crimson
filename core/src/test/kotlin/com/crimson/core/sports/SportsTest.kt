@@ -86,4 +86,22 @@ class SportsTest {
         assertEquals("🇯🇵", WorldRegions.byCode("JP")?.flag)
         assertTrue(WorldRegions.matches(WorldRegions.byCode("JP")!!, "jap"))
     }
+
+    @Test
+    fun `college games carry their division and poll rankings`() {
+        val json = """
+            {"events":[{"id":"501","date":"2026-09-26T19:30Z","name":"Harvard at Brown","shortName":"HARV @ BRWN",
+              "competitions":[{"competitors":[
+                {"homeAway":"home","curatedRank":{"current":99},"team":{"displayName":"Brown Bears","shortDisplayName":"Brown","abbreviation":"BRWN"}},
+                {"homeAway":"away","curatedRank":{"current":12},"team":{"displayName":"Harvard Crimson","shortDisplayName":"Harvard","abbreviation":"HARV"}}],
+               "status":{"type":{"state":"pre","shortDetail":"9/26 - 3:30 PM EDT"}},
+               "broadcasts":[{"market":"national","names":["ESPN+"]}]}]}]}
+        """.trimIndent()
+        val event = EspnScoreboard.parse(java.io.StringReader(json), Leagues.NCAAF, "FCS").single()
+        assertEquals("FCS", event.division)
+        assertEquals(null, event.home?.rank)
+        assertEquals(12, event.away?.rank)
+        assertTrue(event.hasRankedTeam)
+        assertEquals(listOf("80", "81"), Leagues.NCAAF.divisions.map { it.group })
+    }
 }

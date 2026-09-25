@@ -66,8 +66,10 @@ data class UiState(
     val totalChannelCount: Int = 0,
     /** What the full-screen player is showing, beyond what the player itself knows. */
     val nowPlaying: NowPlaying? = null,
-    /** Bumped when the player's controls should show (a key was pressed while watching). */
-    val controlsToken: Long = 0L,
+    /** The captions-and-sound panel is open over the video. */
+    val playerMenuOpen: Boolean = false,
+    /** Whether an OpenSubtitles API key was built in (Settings says where captions come from). */
+    val hasSubtitleKey: Boolean = false,
 ) {
     val canGoBackFromProfiles: Boolean get() = profile != null
 }

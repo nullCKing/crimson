@@ -23,6 +23,7 @@ data class TitleInfo(
     val year: Int? = null,
     val containerExtension: String? = null,
     val series: RawSeriesInfo? = null,
+    val tmdbId: String? = null,
 )
 
 /**
@@ -62,6 +63,7 @@ class InfoCache(private val client: () -> XtreamClient?) {
             genres = Mappers.genres(raw.genre),
             year = Mappers.year(raw.releaseDate),
             containerExtension = raw.containerExtension,
+            tmdbId = raw.tmdbId,
         )
         movies.put(id, info)
         return info
@@ -83,6 +85,7 @@ class InfoCache(private val client: () -> XtreamClient?) {
             genres = Mappers.genres(raw.genre),
             year = Mappers.year(raw.releaseDate),
             series = raw,
+            tmdbId = raw.tmdbId,
         )
         shows.put(id, info)
         return info

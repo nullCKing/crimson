@@ -263,7 +263,7 @@ class GuideScreenshotTest {
                     playback = PlaybackState(isPlaying = true),
                     banner = BannerState(channels().first(), current, next, showToken = 1L),
                     nowPlaying = NowPlaying(NowPlaying.Kind.LIVE, 1L, "HBO"),
-                    controlsToken = 0L,
+                    vodControls = com.crimson.ui.player.VodControls(),
                     nowMs = now,
                     pendingDigits = "",
                     actions = PlayerActions({}, {}, {}, {}, {}, {}, {}, {}, { 0L }, { 0L }),

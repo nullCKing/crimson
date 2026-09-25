@@ -4,8 +4,13 @@ Generates the app's launcher art in Crimson's own palette, so the icon and the T
 what the app looks like: near-black, a red bloom, and the red wordmark.
 
 Produces:
-  app/src/main/res/drawable-xhdpi/banner.png   320x180, required for a Leanback launcher entry
+  app/src/main/res/drawable-{xhdpi,xxhdpi,xxxhdpi}/banner.png   320x180 up to 640x360, the
+                                               Leanback launcher entry, at every density a TV
+                                               launcher may ask for so it never scales one up
   app/src/main/res/mipmap-*/ic_launcher.png    square launcher icons
+
+Everything is drawn at four times its size and scaled down with a Lanczos filter, so the edges
+of the lettering are properly anti-aliased rather than stair-stepped.
 
 Run: python tools/make-art.py
 Requires Pillow. Uses a heavy condensed system font when one is available (Impact on Windows,
@@ -67,12 +72,17 @@ def glowing_text(img, xy, text, font):
     ImageDraw.Draw(img).text(xy, text, font=font, fill=RED)
 
 
-def make_banner(path):
-    w, h = 320, 180
-    img = background((w, h), (60, 20), 260).convert("RGBA")
+SUPERSAMPLE = 4
+
+
+def make_banner(path, scale=1.0):
+    out_w, out_h = int(320 * scale), int(180 * scale)
+    k = scale * SUPERSAMPLE
+    w, h = int(320 * k), int(180 * k)
+    img = background((w, h), (60 * k, 20 * k), 260 * k).convert("RGBA")
     draw = ImageDraw.Draw(img)
-    margin = 24
-    size = 90
+    margin = int(24 * k)
+    size = int(90 * k)
     while size > 12:
         font = load_font(size)
         box = draw.textbbox((0, 0), "CRIMSON", font=font)
@@ -82,18 +92,19 @@ def make_banner(path):
     font = load_font(size)
     box = draw.textbbox((0, 0), "CRIMSON", font=font)
     x = (w - (box[2] - box[0])) // 2 - box[0]
-    y = (h - (box[3] - box[1])) // 2 - box[1] - 8
+    y = (h - (box[3] - box[1])) // 2 - box[1] - int(8 * k)
     glowing_text(img, (x, y), "CRIMSON", font)
-    sub = load_font(14)
+    sub = load_font(int(14 * k))
     tag = "MOVIES  \u00b7  SHOWS  \u00b7  LIVE TV"
     tb = draw.textbbox((0, 0), tag, font=sub)
-    ImageDraw.Draw(img).text(((w - (tb[2] - tb[0])) // 2, y + (box[3] - box[1]) + 22), tag, font=sub, fill=(188, 188, 196))
+    ImageDraw.Draw(img).text(((w - (tb[2] - tb[0])) // 2, y + (box[3] - box[1]) + int(22 * k)), tag, font=sub, fill=(188, 188, 196))
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    img.convert("RGB").save(path, "PNG")
+    img.convert("RGB").resize((out_w, out_h), Image.LANCZOS).save(path, "PNG")
     print("wrote", os.path.relpath(path, os.path.join(HERE, "..")))
 
 
-def make_icon(path, size):
+def make_icon(path, out_size):
+    size = out_size * SUPERSAMPLE
     img = background((size, size), (size * 0.3, size * 0.25), size * 1.1).convert("RGBA")
     font = load_font(int(size * 0.82))
     draw = ImageDraw.Draw(img)
@@ -102,12 +113,13 @@ def make_icon(path, size):
     y = (size - (box[3] - box[1])) // 2 - box[1]
     glowing_text(img, (x, y), "C", font)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    img.convert("RGB").save(path, "PNG")
+    img.convert("RGB").resize((out_size, out_size), Image.LANCZOS).save(path, "PNG")
     print("wrote", os.path.relpath(path, os.path.join(HERE, "..")))
 
 
 def main():
-    make_banner(os.path.join(RES, "drawable-xhdpi", "banner.png"))
+    for density, scale in (("xhdpi", 1.0), ("xxhdpi", 1.5), ("xxxhdpi", 2.0)):
+        make_banner(os.path.join(RES, "drawable-" + density, "banner.png"), scale)
     for density, size in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                           ("xxhdpi", 144), ("xxxhdpi", 192)):
         make_icon(os.path.join(RES, "mipmap-" + density, "ic_launcher.png"), size)

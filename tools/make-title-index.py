@@ -12,7 +12,10 @@ IMDb publishes title.basics and title.ratings at https://datasets.imdbws.com/ fo
 non-commercial use. Reading those is the sanctioned way to get this data; scraping imdb.com is not.
 
 Output: app/src/main/assets/title_index.tsv, one title per line, sorted by votes ascending
-    <name>\t<year>\t<kind>\t<rating>\t<votes>\t<genres>     (kind: M movie, S series)
+    <name>\t<year>\t<kind>\t<rating>\t<votes>\t<genres>\t<imdb id>     (kind: M movie, S series)
+
+The IMDb id (tt0133093) is what subtitle services are searched by, so the player can find
+captions for any title the index knows.
 
 Ascending order matters: the app applies the file top to bottom, so when two IMDb titles share a
 name and the provider's copy carries no year, the more popular one is applied last and wins.
@@ -57,15 +60,15 @@ with gzip.open(os.path.join(SRC, 'title.basics.tsv.gz'), 'rt', encoding='utf-8')
         if '\t' in primary:
             continue
         g = '' if genres == r'\N' else genres
-        rows.append((primary, int(start), kind, rating, votes, g))
+        rows.append((primary, int(start), kind, rating, votes, g, tid))
 
 rows.sort(key=lambda t: t[4])
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 with open(OUT, 'w', encoding='utf-8', newline='\n') as fh:
     fh.write('# Generated from IMDb datasets (https://datasets.imdbws.com/) by\n')
     fh.write('# tools/make-title-index.py. Do not edit by hand; re-run the tool.\n')
-    for name, year, kind, rating, votes, genres in rows:
-        fh.write(f'{name}\t{year}\t{kind}\t{rating:.1f}\t{votes}\t{genres}\n')
+    for name, year, kind, rating, votes, genres, tid in rows:
+        fh.write(f'{name}\t{year}\t{kind}\t{rating:.1f}\t{votes}\t{genres}\t{tid}\n')
 movies = sum(1 for r in rows if r[2] == 'M')
 print(f'wrote {movies:,} movies and {len(rows) - movies:,} series -> {OUT} '
       f'({os.path.getsize(OUT) / 1024:.0f} KB)')

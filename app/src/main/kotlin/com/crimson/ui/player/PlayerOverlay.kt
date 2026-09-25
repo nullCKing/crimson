@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,18 +33,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.crimson.player.PlaybackState
 import com.crimson.ui.BannerState
 import com.crimson.ui.NowPlaying
@@ -73,6 +71,9 @@ class PlayerActions(
     val onRetry: () -> Unit,
     val position: () -> Long,
     val duration: () -> Long,
+    val onMenu: () -> Unit = {},
+    /** The pointer moved or clicked: bring the controls up. */
+    val onPointer: () -> Unit = {},
 )
 
 /**
@@ -80,8 +81,9 @@ class PlayerActions(
  *
  * Live, it is a channel banner in the manner of a live streaming service: the channel, what is on
  * and how far in, and what is next, for a few seconds after every change. For a film or an
- * episode it is a streaming player's controls: title at the top, scrubber and transport at the
- * bottom, shown on any key and whenever paused. Nothing stays up for long, and nothing sits over
+ * episode it is a streaming player's controls ([VodControls]): title at the top, a time bar and a
+ * row of buttons at the bottom that the remote moves between, shown on any key and whenever
+ * paused. Nothing stays up for long, and nothing sits over
  * the picture while it plays: any full-screen blended layer costs a Fire TV Stick on every frame.
  */
 @Composable
@@ -89,22 +91,26 @@ fun PlayerOverlay(
     playback: PlaybackState,
     banner: BannerState,
     nowPlaying: NowPlaying?,
-    controlsToken: Long,
+    vodControls: VodControls,
     nowMs: Long,
     pendingDigits: String,
     actions: PlayerActions,
     modifier: Modifier = Modifier,
+    captionsOn: Boolean = false,
 ) {
     var pointerAt by remember { mutableLongStateOf(0L) }
     Box(
         modifier
             .fillMaxSize()
-            .onPointerActivity { pointerAt = System.currentTimeMillis() }
+            .onPointerActivity {
+                pointerAt = System.currentTimeMillis()
+                if (nowPlaying?.isVod == true) actions.onPointer()
+            }
             .then(if (nowPlaying?.isVod == true) Modifier else Modifier.mouseWheel(actions.onChannelUp, actions.onChannelDown))
             .tvInteractive(onSelect = { if (nowPlaying?.isVod == true) actions.onTogglePause() else actions.onSelect() }, focusTarget = false),
     ) {
         if (nowPlaying?.isVod == true) {
-            VodControls(playback, nowPlaying, maxOf(controlsToken, pointerAt), actions)
+            VodControlsView(playback, nowPlaying, vodControls, actions, captionsOn)
         } else {
             LiveBanner(banner, nowMs, maxOf(banner.showToken, pointerAt))
         }
@@ -153,8 +159,7 @@ private fun LiveBanner(banner: BannerState, nowMs: Long, token: Long) {
                     Box(
                         Modifier
                             .size(96.dp, 60.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.08f)),
+                            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
                         com.crimson.ui.components.ChannelLogo(channel.logoUrl, channel.shortName, Modifier.padding(8.dp).fillMaxSize(), textSize = 13.sp)
@@ -204,7 +209,7 @@ private fun LiveBanner(banner: BannerState, nowMs: Long, token: Long) {
                     }
                 }
                 Text(
-                    "▲ ▼  Channels      OK  Guide      BACK  Exit",
+                    "▲ ▼  Channels      OK  Guide      ≡  Audio & subtitles      BACK  Exit",
                     style = CrimsonType.Caption.copy(color = Crimson.TextTertiary, fontSize = 10.sp),
                     modifier = Modifier.align(Alignment.TopEnd).offset(y = (-30).dp),
                 )
@@ -216,22 +221,15 @@ private fun LiveBanner(banner: BannerState, nowMs: Long, token: Long) {
 // ---------------------------------------------------------------------- films and episodes
 
 @Composable
-private fun VodControls(playback: PlaybackState, nowPlaying: NowPlaying, token: Long, actions: PlayerActions) {
-    var visible by remember { mutableStateOf(true) }
-    LaunchedEffect(token, playback.isPaused) {
-        visible = true
-        if (!playback.isPaused) {
-            delay(CONTROLS_MS)
-            visible = false
-        }
-    }
+private fun VodControlsView(playback: PlaybackState, nowPlaying: NowPlaying, controls: VodControls, actions: PlayerActions, captionsOn: Boolean) {
+    val visible = controls.visible || playback.isPaused
     var position by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     LaunchedEffect(visible, playback.isEnded) {
         while (visible || playback.isEnded) {
             position = actions.position()
             duration = actions.duration()
-            delay(500)
+            delay(250)
         }
     }
 
@@ -243,8 +241,8 @@ private fun VodControls(playback: PlaybackState, nowPlaying: NowPlaying, token: 
                         .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)))
                 )
                 Box(
-                    Modifier.align(Alignment.BottomStart).fillMaxWidth().height(190.dp)
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f))))
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().height(230.dp)
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))))
                 )
                 Row(Modifier.padding(start = Crimson.ScreenPadding, top = 32.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -259,30 +257,37 @@ private fun VodControls(playback: PlaybackState, nowPlaying: NowPlaying, token: 
                         }
                     }
                 }
-                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = Crimson.ScreenPadding, vertical = 26.dp)) {
-                    Scrubber(position, duration)
-                    Spacer(Modifier.height(14.dp))
+                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = Crimson.ScreenPadding, vertical = 28.dp)) {
+                    TimeBar(position, duration, controls.scrubMs, focused = controls.button == null)
+                    Spacer(Modifier.height(18.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        TransportButton(CrimsonIcons.Rewind, 40.dp) { actions.onSeekBy(-10_000L) }
+                        val focus = controls.button
+                        RoundButton(
+                            if (playback.isPaused || playback.isEnded) CrimsonIcons.Play else CrimsonIcons.Pause,
+                            focus == VodButton.PLAY_PAUSE, 56.dp,
+                        ) { actions.onTogglePause() }
                         Spacer(Modifier.width(14.dp))
-                        TransportButton(if (playback.isPaused || playback.isEnded) CrimsonIcons.Play else CrimsonIcons.Pause, 52.dp, primary = true) { actions.onTogglePause() }
-                        Spacer(Modifier.width(14.dp))
-                        TransportButton(CrimsonIcons.Forward, 40.dp) { actions.onSeekBy(10_000L) }
-                        Spacer(Modifier.width(22.dp))
-                        Text("LEFT/RIGHT  10s     OK  ${if (playback.isPaused) "Play" else "Pause"}     REW/FF  30s", style = CrimsonType.Caption.copy(fontSize = 10.sp))
+                        RoundButton(CrimsonIcons.Rewind, focus == VodButton.BACK_10, 46.dp, label = "10") { actions.onSeekBy(-10_000L) }
+                        Spacer(Modifier.width(12.dp))
+                        RoundButton(CrimsonIcons.Forward, focus == VodButton.FORWARD_10, 46.dp, label = "10") { actions.onSeekBy(10_000L) }
                         Spacer(Modifier.weight(1f))
+                        PillButton(focus == VodButton.AUDIO_SUBTITLES, actions.onMenu) {
+                            Text(
+                                "CC",
+                                style = CrimsonType.Label.copy(fontSize = 10.sp, fontWeight = FontWeight.Black, color = it),
+                                modifier = Modifier
+                                    .border(1.5.dp, it, RoundedCornerShape(3.dp))
+                                    .padding(horizontal = 4.dp, vertical = 1.dp),
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Text(if (captionsOn) "Audio & Subtitles  ·  On" else "Audio & Subtitles", style = CrimsonType.Label.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = it))
+                        }
                         nowPlaying.next?.let { next ->
-                            Row(
-                                Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Crimson.Glass)
-                                    .tvInteractive(onSelect = actions.onNext, focusTarget = false)
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(CrimsonIcons.SkipNext, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Next Episode  ·  E${next.number}", style = CrimsonType.Label.copy(fontWeight = FontWeight.Bold))
+                            Spacer(Modifier.width(14.dp))
+                            PillButton(focus == VodButton.NEXT_EPISODE, actions.onNext) {
+                                Icon(CrimsonIcons.SkipNext, null, tint = it, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text("Next Episode  ·  E${next.number}", style = CrimsonType.Label.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = it))
                             }
                         }
                     }
@@ -295,42 +300,89 @@ private fun VodControls(playback: PlaybackState, nowPlaying: NowPlaying, token: 
     }
 }
 
+/**
+ * Where the video is, as a bar across the screen, red as far as it has played. With focus it
+ * thickens and its knob turns white; while it is being moved, the knob and a time above it show
+ * where playback will jump to.
+ */
 @Composable
-private fun Scrubber(position: Long, duration: Long) {
-    val fraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+private fun TimeBar(position: Long, duration: Long, scrubMs: Long?, focused: Boolean) {
+    val shown = scrubMs ?: position
+    val fraction = if (duration > 0) (shown.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    val playedFraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(formatTime(position), style = CrimsonType.Label.copy(fontSize = 12.sp))
-        Spacer(Modifier.width(14.dp))
-        Box(Modifier.weight(1f).height(16.dp), contentAlignment = Alignment.CenterStart) {
-            ProgressLine(fraction, height = 4.dp, track = Color.White.copy(alpha = 0.25f))
-            val density = LocalDensity.current
-            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val x = with(density) { (constraints.maxWidth * fraction).toDp() } - 7.dp
-                Box(
-                    Modifier
-                        .offset(x = x.coerceAtLeast(0.dp))
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(Crimson.Red)
+        Text(formatTime(position), style = CrimsonType.Label.copy(fontSize = 13.sp))
+        Spacer(Modifier.width(16.dp))
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).height(44.dp), contentAlignment = Alignment.CenterStart) {
+            val barHeight = if (focused) 6.dp else 4.dp
+            val width = maxWidth
+            Box(Modifier.fillMaxWidth().height(barHeight).background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(50)))
+            if (scrubMs != null && fraction > playedFraction) {
+                // Ahead of what has been watched, lighter, out to where it will jump to.
+                Box(Modifier.width(width * fraction).height(barHeight).background(Color.White.copy(alpha = 0.55f), RoundedCornerShape(50)))
+            }
+            Box(Modifier.width(width * playedFraction).height(barHeight).background(Crimson.Red, RoundedCornerShape(50)))
+            val knob = if (focused) 20.dp else 14.dp
+            Box(
+                Modifier
+                    .offset(x = (width * fraction - knob / 2).coerceIn(0.dp, width - knob))
+                    .size(knob)
+                    .background(if (focused) Color.White else Crimson.Red, CircleShape)
+                    .then(if (focused) Modifier.border(3.dp, Crimson.Red, CircleShape) else Modifier)
+            )
+            if (scrubMs != null) {
+                val bubble = 86.dp
+                Text(
+                    formatTime(scrubMs),
+                    style = CrimsonType.Label.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.Black),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .offset(x = (width * fraction - bubble / 2).coerceIn(0.dp, width - bubble), y = (-30).dp)
+                        .width(bubble)
+                        .background(Color.White, RoundedCornerShape(6.dp))
+                        .padding(vertical = 4.dp),
                 )
             }
         }
-        Spacer(Modifier.width(14.dp))
-        Text(if (duration > 0) "-" + formatTime(duration - position) else "--:--", style = CrimsonType.Label.copy(fontSize = 12.sp, color = Crimson.TextSecondary))
+        Spacer(Modifier.width(16.dp))
+        Text(if (duration > 0) "-" + formatTime(duration - position) else "--:--", style = CrimsonType.Label.copy(fontSize = 13.sp, color = Crimson.TextSecondary))
     }
 }
 
+/** A round transport button: white with a dark icon when focused, glass otherwise. */
 @Composable
-private fun TransportButton(icon: ImageVector, size: Dp, primary: Boolean = false, onClick: () -> Unit) {
+private fun RoundButton(icon: ImageVector, focused: Boolean, size: Dp, label: String? = null, onClick: () -> Unit) {
+    val content = if (focused) Color.Black else Color.White
     Box(
         Modifier
             .size(size)
-            .clip(CircleShape)
-            .background(if (primary) Color.White else Color.White.copy(alpha = 0.14f))
+            .background(if (focused) Color.White else Crimson.ControlFill, CircleShape)
             .tvInteractive(onSelect = onClick, focusTarget = false),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = if (primary) Color.Black else Color.White, modifier = Modifier.size(size * 0.52f))
+        if (label == null) {
+            Icon(icon, null, tint = content, modifier = Modifier.size(size * 0.5f))
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(icon, null, tint = content, modifier = Modifier.size(size * 0.36f))
+                Text(label, style = CrimsonType.Label.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = content))
+            }
+        }
+    }
+}
+
+/** A labelled button on the right of the row: white when focused, glass otherwise. */
+@Composable
+private fun PillButton(focused: Boolean, onClick: () -> Unit, content: @Composable (Color) -> Unit) {
+    Row(
+        Modifier
+            .height(44.dp)
+            .background(if (focused) Color.White else Crimson.ControlFill, RoundedCornerShape(8.dp))
+            .tvInteractive(onSelect = onClick, focusTarget = false)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        content(if (focused) Color.Black else Color.White)
     }
 }
 
@@ -346,15 +398,14 @@ private fun NextEpisodeCard(nowPlaying: NowPlaying, modifier: Modifier, onNext: 
     }
     Row(
         modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Crimson.SurfaceRaised.copy(alpha = 0.96f))
+            .background(Crimson.SurfaceRaised.copy(alpha = 0.96f), RoundedCornerShape(10.dp))
             .tvInteractive(onSelect = onNext, focusTarget = false)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(128.dp, 72.dp).clip(RoundedCornerShape(6.dp)).background(Crimson.SurfaceHigh)) {
+        Box(Modifier.size(128.dp, 72.dp).background(Crimson.SurfaceHigh, RoundedCornerShape(6.dp))) {
             val art = next.image ?: nowPlaying.backdrop
-            if (!art.isNullOrBlank()) AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            if (!art.isNullOrBlank()) com.crimson.ui.components.RoundedImage(art, null, 6.dp, Modifier.fillMaxSize())
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.width(200.dp)) {
@@ -382,10 +433,11 @@ private fun formatTime(ms: Long): String {
 fun ChannelNumberEntry(digits: String, modifier: Modifier = Modifier) {
     Text(
         digits,
-        style = CrimsonType.Display.copy(fontSize = 52.sp, shadow = androidx.compose.ui.graphics.Shadow(Color.Black, blurRadius = 16f)),
+        // No blurred shadow: the dark plate already separates the digits from the video, and a
+        // blurred text shadow crashes the renderer on Fire OS 5 (see BlurredTextShadows).
+        style = CrimsonType.Display.copy(fontSize = 52.sp),
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
             .padding(horizontal = 18.dp, vertical = 6.dp),
     )
 }
@@ -395,8 +447,7 @@ fun ChannelNumberEntry(digits: String, modifier: Modifier = Modifier) {
 fun ReconnectingLabel(modifier: Modifier = Modifier) {
     Row(
         modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color.Black.copy(alpha = 0.7f))
+            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(50))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -411,8 +462,7 @@ fun PlaybackErrorPanel(message: String, onRetry: () -> Unit, onBack: () -> Unit,
     Column(
         modifier
             .width(420.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Crimson.SurfaceRaised.copy(alpha = 0.96f))
+            .background(Crimson.SurfaceRaised.copy(alpha = 0.96f), RoundedCornerShape(12.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -434,4 +484,3 @@ fun PlaybackErrorPanel(message: String, onRetry: () -> Unit, onBack: () -> Unit,
 }
 
 const val BANNER_MS = 5_000L
-const val CONTROLS_MS = 4_000L

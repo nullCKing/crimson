@@ -65,7 +65,8 @@ class AppContainer(context: Context) {
             .okHttpClient(httpClient)
             .memoryCache {
                 coil.memory.MemoryCache.Builder(appContext)
-                    .maxSizePercent(0.15)
+                    // Full-colour images are twice the size of the 16-bit ones this used to allow.
+                    .maxSizePercent(0.25)
                     .build()
             }
             .diskCache {
@@ -78,7 +79,9 @@ class AppContainer(context: Context) {
             // finished instead of loading. Cheap, because it is a single alpha on the image layer.
             .crossfade(220)
             .respectCacheHeaders(false)
-            .allowRgb565(true)
+            // Full 8-bit colour for every image. 16-bit (RGB_565) halves a poster's memory but
+            // bands gradients and skies, which is exactly the look this app is not going for.
+            .allowRgb565(false)
             .build()
             .also { coil.Coil.setImageLoader(it) }
     }
@@ -89,6 +92,14 @@ class AppContainer(context: Context) {
 
     /** The one and only player. */
     val player: ExoPlayerController by lazy { ExoPlayerController(appContext, httpClient) }
+
+    val subtitles: com.crimson.data.subtitles.SubtitleRepository by lazy {
+        com.crimson.data.subtitles.SubtitleRepository(appContext, httpClient)
+    }
+
+    val themeSkips: com.crimson.data.skip.ThemeSkipRepository by lazy {
+        com.crimson.data.skip.ThemeSkipRepository(appContext, httpClient)
+    }
 
     @Volatile
     var session: Session? = null

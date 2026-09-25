@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -249,8 +248,7 @@ private fun LiveHero(state: LiveState, nowMs: Long, preview: @Composable (Modifi
             Modifier
                 .fillMaxHeight()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Brush.linearGradient(listOf(Crimson.SurfaceHigh, Crimson.Surface)))
+                .background(Brush.linearGradient(listOf(Crimson.SurfaceHigh, Crimson.Surface)), RoundedCornerShape(10.dp))
                 .border(1.dp, if (state.previewing) Crimson.Red.copy(alpha = 0.7f) else Crimson.Stroke, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) {

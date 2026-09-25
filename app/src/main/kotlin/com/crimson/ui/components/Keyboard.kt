@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -22,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,6 +42,10 @@ import com.crimson.ui.theme.CrimsonType
  * streaming apps all draw their own compact grid beside the results instead, so each letter
  * visibly narrows what is on the right. A hardware keyboard works as well — the search page
  * listens for typed characters directly.
+ *
+ * The grid is six square keys across, sized from the width it is given, and the action row above
+ * it is three keys of exactly two columns each, so every edge lines up. (Fixed-size keys in a
+ * narrower column used to squeeze the last column and the Clear key.)
  */
 @Composable
 fun OnScreenKeyboard(
@@ -50,30 +54,36 @@ fun OnScreenKeyboard(
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
     firstKeyRequester: FocusRequester? = null,
-    keySize: Dp = 38.dp,
 ) {
     val rows = listOf("abcdef", "ghijkl", "mnopqr", "stuvwx", "yz1234", "567890")
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            KeyButton(width = keySize * 3 + 10.dp, height = keySize, icon = CrimsonIcons.Space, label = "SPACE", onClick = { onChar(' ') })
-            KeyButton(width = keySize * 3 / 2 + 2.dp, height = keySize, icon = CrimsonIcons.Backspace, onClick = onBackspace)
-            KeyButton(width = keySize * 3 / 2 + 3.dp, height = keySize, label = "CLEAR", onClick = onClear)
-        }
-        rows.forEachIndexed { r, keys ->
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                keys.forEachIndexed { c, ch ->
-                    KeyButton(
-                        width = keySize,
-                        height = keySize,
-                        label = ch.uppercase(),
-                        onClick = { onChar(ch) },
-                        focusRequester = if (r == 0 && c == 0) firstKeyRequester else null,
-                    )
+    val gap = 6.dp
+    BoxWithConstraints(modifier) {
+        val key = ((maxWidth - gap * (COLUMNS - 1)) / COLUMNS).coerceAtMost(46.dp)
+        val wide = key * 2 + gap
+        Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                KeyButton(width = wide, height = key, icon = CrimsonIcons.Space, label = "SPACE", onClick = { onChar(' ') })
+                KeyButton(width = wide, height = key, icon = CrimsonIcons.Backspace, label = "DELETE", onClick = onBackspace)
+                KeyButton(width = wide, height = key, label = "CLEAR", onClick = onClear)
+            }
+            rows.forEachIndexed { r, keys ->
+                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    keys.forEachIndexed { c, ch ->
+                        KeyButton(
+                            width = key,
+                            height = key,
+                            label = ch.uppercase(),
+                            onClick = { onChar(ch) },
+                            focusRequester = if (r == 0 && c == 0) firstKeyRequester else null,
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private const val COLUMNS = 6
 
 @Composable
 private fun KeyButton(
@@ -89,8 +99,7 @@ private fun KeyButton(
     Box(
         modifier = Modifier
             .size(width, height)
-            .clip(RoundedCornerShape(5.dp))
-            .background(bg)
+            .background(bg, RoundedCornerShape(5.dp))
             .tvInteractive(onSelect = onClick, onFocus = { focused = it }, focusRequester = focusRequester),
         contentAlignment = Alignment.Center,
     ) {
@@ -122,23 +131,29 @@ fun SearchQueryField(query: String, placeholder: String, modifier: Modifier = Mo
     Row(
         modifier
             .height(44.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Crimson.SurfaceRaised)
+            .background(Crimson.SurfaceRaised, RoundedCornerShape(6.dp))
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(CrimsonIcons.Search, null, tint = Crimson.TextTertiary, modifier = Modifier.size(20.dp))
         Box(Modifier.width(10.dp))
+        val caretBar = @Composable {
+            Box(
+                Modifier
+                    .width(2.dp)
+                    .height(20.dp)
+                    .background(Crimson.Red.copy(alpha = caret)),
+            )
+        }
         if (query.isEmpty()) {
+            // The caret where typing will start, before the hint, so the hint does not read as
+            // something already typed.
+            caretBar()
+            Box(Modifier.width(6.dp))
             Text(placeholder, style = CrimsonType.Body.copy(color = Crimson.TextTertiary), maxLines = 1)
         } else {
             Text(query, style = CrimsonType.Title.copy(fontSize = 17.sp), maxLines = 1)
+            caretBar()
         }
-        Box(
-            Modifier
-                .width(2.dp)
-                .height(20.dp)
-                .background(Crimson.Red.copy(alpha = caret)),
-        )
     }
 }

@@ -28,7 +28,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -123,7 +122,6 @@ private fun ProfileTile(
         Box(
             Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
-                .clip(RoundedCornerShape(10.dp))
                 .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(10.dp))
                 .tvInteractive(onSelect = onClick, onFocus = { focused = it }, focusRequester = focusRequester),
         ) {
@@ -159,8 +157,7 @@ private fun AddProfileTile(onClick: () -> Unit, focusRequester: FocusRequester?,
             Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .size(size)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (focused) Color.White else Crimson.SurfaceRaised)
+                .background(if (focused) Color.White else Crimson.SurfaceRaised, RoundedCornerShape(10.dp))
                 .border(1.dp, Crimson.Stroke, RoundedCornerShape(10.dp))
                 .tvInteractive(onSelect = onClick, onFocus = { focused = it }, focusRequester = focusRequester),
             contentAlignment = Alignment.Center,
@@ -224,7 +221,7 @@ fun EditProfileScreen(
             Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth()) {
                 Column(Modifier.width(210.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Avatar(avatar, 132.dp, Modifier.clip(RoundedCornerShape(10.dp)))
+                    Avatar(avatar, 132.dp)
                     Spacer(Modifier.height(14.dp))
                     Text("Choose a picture", style = CrimsonType.Caption)
                     Spacer(Modifier.height(8.dp))
@@ -283,7 +280,6 @@ private fun AvatarPicker(selected: Int, onPick: (Int) -> Unit) {
                     var focused by remember { mutableStateOf(false) }
                     Box(
                         Modifier
-                            .clip(RoundedCornerShape(6.dp))
                             .border(
                                 width = if (focused || index == selected) 2.dp else 0.dp,
                                 color = when {
@@ -312,7 +308,7 @@ fun LoadingScreen(profile: Profile?, message: String, detail: String?) {
             Spacer(Modifier.height(26.dp))
             if (profile != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(profile.avatar, 22.dp, Modifier.clip(RoundedCornerShape(4.dp)))
+                    Avatar(profile.avatar, 22.dp)
                     Spacer(Modifier.width(8.dp))
                     Text("Setting up ${profile.name}", style = CrimsonType.Label.copy(color = Crimson.TextSecondary))
                 }

@@ -3,6 +3,144 @@
 Every non-obvious choice, with the reason. Crimson's decisions come first; RetroGuide's follow,
 newest last, and still govern the engine Crimson inherited.
 
+## Crimson 1.3 (2026-09-25)
+
+- **Player controls work like Netflix's and Prime's** (`VodControls`), asked for after Down
+  opened a menu. Any key brings them up; the time bar has focus; Left/Right move a preview of
+  where to jump (10 s steps, then 30 s, 1 and 2 minutes as presses keep coming or a key is held,
+  never more than a fiftieth of the video) and playback jumps 0.8 s after the keys stop, or at
+  OK; Down reaches Play/Pause, -10, +10, Audio & Subtitles and Next Episode. OK with the controls
+  hidden pauses (Netflix). Back hides them, then leaves. The focus is a plain state machine in
+  the view model rather than Compose focus: the root holds focus on the watch screen (see
+  "Initial focus"), and a reducer is testable (`VodControlsTest`).
+- **Captions were drawn twice** for streams with their own subtitle track: Media3's `PlayerView`
+  draws cues in its own `SubtitleView` as well as `CaptionLayer` doing it. Its subtitle view is
+  hidden. `CaptionLayer` also drops a cue whose lines another visible cue already shows (files
+  converted from roll-up captions carry each line into the next cue).
+- **English audio first** (`setPreferredAudioLanguage("en")`, a setting, on by default): the
+  user watches anime dubbed, and dual-audio releases mark the Japanese track as the default,
+  which is what the player picked. Any track can be chosen in Audio & Subtitles for the rest of
+  the title. The provider's "EN - Hunter x Hunter (2011)" is the English listing; whether its
+  files carry an English track is the provider's to say.
+
+## Crimson 1.2 (2026-09-24)
+
+### Theme-song skipping
+
+- **Chosen per show, then automatic.** The viewer asked for *The Office*, *South Park* and
+  *Hunter x Hunter* (with its ending) and to choose others themselves; those three are on by
+  default (`ThemeSkipChoice.defaultFor`, matched on the catalogue's title key) and every show has
+  two switches in the player's menu. There is no "Skip intro" button to press: asked for
+  explicitly.
+- **By ear, not by timestamps.** Crowd-sourced intro times are timed on someone else's copy and
+  are patchy: for *The Office* 2×7 IntroDB says 0:30 and TheIntroDB 1:26, and many later
+  episodes have no intro times at all. A theme song, though, is the same recording in every
+  episode. So the decoded audio's chroma (the twelve notes, eight times a second: `ChromaMeter`)
+  is recorded over each episode's first ten and last six minutes, and when an episode ends it is
+  compared with the show's last four: twelve seconds or more of music they share is a theme
+  (`ThemeFinder`, `ThemeLearner`). Two episodes are the minimum anything can learn from without
+  a reference recording. Comparing ten minutes with ten minutes is 23 million frame pairs, so
+  frames vote first by their two strongest notes and only alignments with a run of votes are
+  compared (34 ms on a desktop for both windows of two episodes). A fuller hearing of a known
+  song (one first learned from an episode where part of it was skipped over) replaces it.
+- **Recognition takes three seconds.** Two seconds of chroma could not tell a theme from other
+  music on the same chords in tests; three could, with room (true matches >= 0.88, the best false
+  one 0.74). After one and a half seconds that closely match a theme's opening, the player's
+  volume goes to 20% while the rest decides, so about a second is heard at full volume. Because
+  songs repeat (a chorus, a riff), a match is followed back through the last thirty seconds heard
+  and must run unbroken to the theme's first frame; a later repeat runs into the cold open
+  instead. On the test episodes the skip lands within 25 ms of the song's end.
+- **Databases only until learned**, and only where IntroDB and TheIntroDB agree to within five
+  seconds or only one has an answer.
+- **Each theme is skipped once per episode**, so going back into it plays it. An ending that runs
+  to within twelve seconds of the end goes to the next episode, as the credits would.
+- **Decoding.** Listening needs decoded audio, so while a show with skipping on plays, Dolby is
+  decoded rather than passed through (as for dialogue boost and caption sync; only if a decoder
+  exists).
+- **Let's Encrypt roots bundled** (`res/raw/extra_roots.pem`, ISRG Root X1 and X2 from
+  Mozilla's list): both databases use Let's Encrypt, X1 is missing before Android 7.1 (Fire OS 5)
+  and X2 before 14. Used only after the system's own roots refuse a chain.
+- **Stored per show, shared by profiles** (`files/themes/<show>/`): a song is the same for
+  everyone; the on/off choice is per profile, like every other setting.
+
+## Crimson 1.1 (2026-09-24)
+
+### Captions
+
+- **Sources in order of quality.** A subtitle track in the file (timed to that exact file); for
+  live, the broadcast's CEA-608 (which ExoPlayer exposes for every TS stream, so "on" means "shown
+  when sent"); otherwise English files from OpenSubtitles. Only English, as asked.
+- **OpenSubtitles two ways.** The REST API needs a key (an account is something the user has to
+  create), so it is optional, from `secrets/opensubtitles.properties` into BuildConfig; without
+  one the public Stremio addon in front of the same database is used, which needs nothing but
+  says less (no download counts) and needs an IMDb id. Both hand out SRT; files are cached.
+- **IMDb ids come from the bundled title index** (a seventh column), looked up when a title
+  starts playing by the same key/year rule the catalogue join uses. A database column would have
+  needed a migration, and Room here falls back to *destructive* migration, which would have wiped
+  My List and resume points.
+- **Ranking** (`SubtitleRanking`): hash match, then downloads, a frame rate that runs at the same
+  speed as the video, trusted uploaders; machine translations last; cam/telesync releases down.
+  Frame rates are compared by *speed* (29.97 is a telecine of 23.976 and fits; 25 is a PAL speed-up
+  and is stretched back on load).
+- **Automatic sync** (`SubtitleSync`), because a file made for another release is often a second
+  or two off. The decoded audio's voice band is metered per 100 ms in `TappingAudioSink` (the
+  buffer's presentation time maps it to the video; the renderer-to-media offset is calibrated from
+  the sink's playout position), slow drifts are removed, and the captions are slid ±60 s (and
+  across the common speed ratios) to find where speech and captions agree. Applied only when the
+  peak stands ≥5 standard deviations clear of the rest of the curve, shoulders excluded; tried at
+  1.5, 3, 6 and 10 minutes heard. On the TTS test film: +2.7 s found exactly offline (z 6.7) and
+  +2.8 s in the app. Shape measures (voice band against hiss) were tried and did worse with IIR
+  filters than the plain level. Audio that is passed through encoded cannot be heard, so while
+  downloaded captions show, Dolby audio is decoded (only if a decoder exists).
+- **Hearing-impaired files serve both kinds of viewer**: `[sounds]`, `(laughs)` and `NAME:` are
+  stripped on the device when sound descriptions are off, so the best file never has to be passed
+  over for being SDH.
+- **Drawn by the app, not SubtitleView**: downloaded captions are timed by the app (sync, nudge),
+  and SubtitleView's drop-shadow edge is a blurred text shadow, which crashes Fire OS 5. The
+  outline style is a stroke.
+
+### Dialogue boost, brightness
+
+- **DSP in the audio sink, not `DynamicsProcessing`** (API 28; the user's box is 22).
+  `DialogueLeveler`: 5.1 centre +3.5 dB, LFE −9 dB, surrounds −4.4 dB; low shelf −5 dB at 180 Hz and
+  +4 dB at 2.2 kHz; linked 4:1 compressor from −26 dBFS with +9 dB make-up; −1 dBFS limiter; a
+  60 ms fade when toggled, bit-exact passthrough when off. It keeps the channel count, so it can be
+  toggled without reconfiguring the sink. Switching it on during a Dolby-passthrough stream
+  re-prepares the stream once so the renderer decodes.
+- **Video brightness is a black layer over the video only**; TVs have no backlight an app can set.
+  Captions keep 40% brightness at the bottom of the range so they do not glare over dim video.
+
+### Rendering
+
+- **No rounded clips.** HWUI cuts `clip(roundedShape)` without anti-aliasing; every chip, button,
+  key and card had stepped corners, visible under the focus zoom. Shapes are filled
+  (`background(color, shape)`, anti-aliased) and pictures are rounded in the bitmap
+  (`RoundedImage`, Coil's `RoundedCornersTransformation`) — no offscreen layer, which would have
+  softened focused cards.
+- **`tvInteractive` doubled every modifier before it** (`pointerInput` built on the receiver and
+  appended to it): a second focus ring inside focused cards, focus zoom squared (1.08 → 1.17) and
+  translucent fills laid twice. Fixed; zooms are now what the code says. Fills were restored to
+  what was on screen with `Crimson.ControlFill`/`ControlFillStrong` and a 0.9 guide scrim, so only
+  edges and rings changed.
+- **Logos are shrunk with a box filter** (`LogoImage`/`SmoothDownscale`): PNGs decoded with a
+  sample size are point-sampled, which is what made logo edges jagged. **No RGB_565**, which
+  banded posters; the memory cache went from 15% to 25% of the heap to make room.
+- **Launcher banner at xhdpi, xxhdpi and xxxhdpi**, supersampled.
+
+### Sports, search
+
+- **College scoreboards by division** (`groups=80` FBS, `81` FCS, `50` Division I basketball,
+  `limit=500`): ESPN's default college scoreboard is only games with a ranked team. Home keeps to
+  those (a ranked team playing) so it is not flooded; the Sports page shows everything, splitting
+  any row of more than 24 games by league and division, with poll ranks on the cards.
+- **Search is one page with one state.** Opening a result and coming back keeps the query, scope
+  and cursor; leaving the page clears it. There is only ever one search in the back stack, and a
+  new search clears the old results before looking up — last night's game's channel could
+  otherwise show under tonight's query.
+- **Keyboard keys are sized from the column**, six square keys and a row of three double-width
+  ones; fixed 38 dp keys in a narrower column had squeezed the last column. With the query empty
+  the caret sits before the hint.
+
 ## Crimson (2026-09-22)
 
 ### Scope and shape
@@ -103,6 +241,19 @@ newest last, and still govern the engine Crimson inherited.
   `Down` straight to the first card.
 - **Back on Home from the rows returns to the billboard first**, then leaves; the card the viewer
   left from is remembered per row (row id + title), because the same title appears in many rows.
+- **No blurred text shadows before Android 9** (`BlurredTextShadows` in `Controls.kt`). Before
+  Android 9 the hardware renderer blurs text shadows with RenderScript, and on Fire OS 5 (the
+  2nd-gen Fire TV box, Android 5.1) that blur segfaults the render thread
+  (`ScriptIntrinsicBlur::setInput`), killing the app with no Java stack trace. It showed up as
+  "crashes once the channels load" because the wordmark's red glow in the Home top bar was the
+  first blurred text drawn. The glow stays on Android 9+ (Skia pipeline, no RenderScript);
+  shadows with `blurRadius = 0` (the guide's) never reach the blur and are fine everywhere.
+- **The release build proves it installs on Fire OS 5** (`verifyReleaseApk`, run by `release`):
+  aapt2 parses it, minSdk ≤ 22, v1 and v2 signatures verify at that API level, 4-byte aligned,
+  `resources.arsc` stored, not debuggable or test-only. Those are the causes of "There was a
+  problem parsing the package".
+- **The last crash is shown on the next launch** (`CrashLog`): a Fire TV has no way to read a
+  stack trace without adb, so the trace is kept in the app's files and shown once.
 - **No blurred shadows under focused cards.** Removing it took vertical scrolling on the emulator
   from 24 to 18 ms/frame and slow draw commands from 19 to 0. Backdrop scrims are drawn once over
   the crossfade instead of once per image, and the corner bloom is sized to its corner.

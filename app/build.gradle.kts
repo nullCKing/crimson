@@ -13,7 +13,7 @@ plugins {
  *
  * The same key must be used for every build so updates install over old versions; see
  * tools/make-keystore.sh. When the file is absent the release build falls back to the debug key
- * and says so, rather than failing — a developer who only wants a debug build should not have to
+ * and says so, rather than failing â€” a developer who only wants a debug build should not have to
  * create a keystore first.
  */
 val keystorePropertiesFile = rootProject.file("secrets/keystore.properties")
@@ -24,6 +24,18 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
 
+/**
+ * An OpenSubtitles.com API key (and optionally the account it belongs to), from
+ * secrets/opensubtitles.properties, which is gitignored. Without it the player still finds
+ * captions, through the keyless addon; see SubtitleRepository.
+ */
+val subtitleProperties = Properties().apply {
+    val file = rootProject.file("secrets/opensubtitles.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun subtitleSecret(name: String): String =
+    "\"" + subtitleProperties.getProperty(name, "").trim().replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 android {
     namespace = "com.crimson"
     compileSdk = 35
@@ -33,9 +45,19 @@ android {
         // minSdk 21 supports Fire OS 5+ (Android 5.0+) and up, covering older Fire Sticks as well as newer models.
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "OPENSUBTITLES_API_KEY", subtitleSecret("apiKey"))
+        buildConfigField("String", "OPENSUBTITLES_USERNAME", subtitleSecret("username"))
+        buildConfigField("String", "OPENSUBTITLES_PASSWORD", subtitleSecret("password"))
+        // The keyless subtitle service. A debug build can be pointed at the mock server's stand-in
+        // with -PsubtitleAddon=http://10.0.2.2:8080 (see tools/mock-xtream, --captions).
+        buildConfigField("String", "SUBTITLE_ADDON_URL", "\"https://opensubtitles-v3.strem.io\"")
+        // The two intro databases (theme-song skipping). -PintroDb=http://10.0.2.2:8080 points a
+        // debug build at the mock server's stand-ins for both (tools/mock-xtream, --themes).
+        buildConfigField("String", "INTRODB_URL", "\"https://api.introdb.app\"")
+        buildConfigField("String", "THEINTRODB_URL", "\"https://api.theintrodb.org\"")
     }
 
     signingConfigs {
@@ -73,6 +95,13 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
+            (project.findProperty("subtitleAddon") as String?)?.let {
+                buildConfigField("String", "SUBTITLE_ADDON_URL", "\"$it\"")
+            }
+            (project.findProperty("introDb") as String?)?.let {
+                buildConfigField("String", "INTRODB_URL", "\"$it\"")
+                buildConfigField("String", "THEINTRODB_URL", "\"$it\"")
+            }
         }
     }
 

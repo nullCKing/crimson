@@ -12,14 +12,29 @@ data class League(
     val label: String,
     /** The path segment under `site.api.espn.com/apis/site/v2/sports/`. */
     val path: String,
+    /**
+     * ESPN's divisions, fetched one scoreboard each. College scoreboards default to games with a
+     * ranked team (18 on a typical Saturday); asking by division gets every game (some 130 in
+     * FBS and FCS together). Empty for a league whose default scoreboard is already complete.
+     */
+    val divisions: List<Division> = emptyList(),
 )
+
+/** One of a league's divisions on ESPN: `groups=80` is FBS. */
+data class Division(val group: String, val label: String)
 
 object Leagues {
     val NFL = League("nfl", "NFL", "NFL", "football/nfl")
-    val NCAAF = League("ncaaf", "College Football", "NCAAF", "football/college-football")
+    val NCAAF = League(
+        "ncaaf", "College Football", "NCAAF", "football/college-football",
+        divisions = listOf(Division("80", "FBS"), Division("81", "FCS")),
+    )
     val NBA = League("nba", "NBA", "NBA", "basketball/nba")
     val WNBA = League("wnba", "WNBA", "WNBA", "basketball/wnba")
-    val NCAAM = League("ncaam", "College Basketball", "NCAAM", "basketball/mens-college-basketball")
+    val NCAAM = League(
+        "ncaam", "College Basketball", "NCAAM", "basketball/mens-college-basketball",
+        divisions = listOf(Division("50", "Division I")),
+    )
     val MLB = League("mlb", "MLB", "MLB", "baseball/mlb")
     val NHL = League("nhl", "NHL", "NHL", "hockey/nhl")
     val MLS = League("mls", "MLS", "MLS", "soccer/usa.1")
@@ -48,6 +63,8 @@ data class Competitor(
     val record: String?,
     val isHome: Boolean,
     val isWinner: Boolean,
+    /** The team's poll ranking (college), 1 to 25; null when unranked. */
+    val rank: Int? = null,
 )
 
 data class SportsEvent(
@@ -64,8 +81,13 @@ data class SportsEvent(
     /** National TV first, then everything else ESPN lists, deduplicated. */
     val networks: List<String>,
     val venue: String?,
+    /** The division it was listed under ("FBS", "FCS"), for leagues fetched by division. */
+    val division: String? = null,
 ) {
     val network: String? get() = networks.firstOrNull()
+
+    /** A ranked team is playing: the college games worth a place on the Home page. */
+    val hasRankedTeam: Boolean get() = home?.rank != null || away?.rank != null
 }
 
 /**
@@ -77,7 +99,7 @@ data class SportsEvent(
  */
 object EspnScoreboard {
 
-    fun parse(reader: Reader, league: League): List<SportsEvent> {
+    fun parse(reader: Reader, league: League, division: String? = null): List<SportsEvent> {
         val out = ArrayList<SportsEvent>()
         JsonReader(reader).use { json ->
             if (json.peek() != JsonReader.Token.BEGIN_OBJECT) return emptyList()
@@ -85,7 +107,7 @@ object EspnScoreboard {
             while (json.hasNext()) {
                 if (json.nextName() == "events" && json.peek() == JsonReader.Token.BEGIN_ARRAY) {
                     json.beginArray()
-                    while (json.hasNext()) readEvent(json, league)?.let(out::add)
+                    while (json.hasNext()) readEvent(json, league)?.let { out.add(it.copy(division = division)) }
                     json.endArray()
                 } else {
                     json.skipValue()
@@ -214,6 +236,7 @@ object EspnScoreboard {
             var abbr = ""
             var logo: String? = null
             var color: String? = null
+            var rank: Int? = null
             json.beginObject()
             while (json.hasNext()) {
                 when (json.nextName()) {
@@ -221,6 +244,8 @@ object EspnScoreboard {
                     "winner" -> winner = json.nextString() == "true"
                     "score" -> score = json.nextString()
                     "records" -> record = readFirstRecord(json)
+                    // 99 is ESPN's "unranked".
+                    "curatedRank" -> rank = readField(json, "current")?.toDoubleOrNull()?.toInt()?.takeIf { it in 1..25 }
                     // Soccer, tennis and golf put a person where a team would be.
                     "team", "athlete" -> {
                         if (json.peek() != JsonReader.Token.BEGIN_OBJECT) { json.skipValue(); continue }
@@ -251,6 +276,7 @@ object EspnScoreboard {
                 record = record,
                 isHome = home,
                 isWinner = winner,
+                rank = rank,
             )
         }
         json.endArray()

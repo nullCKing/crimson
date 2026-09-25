@@ -61,7 +61,10 @@ fun Modifier.tvInteractive(
     val currentOnSelect by rememberUpdatedState(onSelect)
     val currentOnHover by rememberUpdatedState(onHover)
 
-    val pointer = pointerInput(focusTarget) {
+    // Built on a fresh Modifier and appended below. Built on the receiver, it carried every
+    // modifier before this one along with it, so the chain was applied twice: a second focus
+    // ring inside every focused card, and backgrounds, clips and scales doubled.
+    val pointer = Modifier.pointerInput(focusTarget) {
         val slop = viewConfiguration.touchSlop
         awaitPointerEventScope {
             // A click is a press and a release on this element without a drag in between. The

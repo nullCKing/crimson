@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -168,7 +167,7 @@ private fun InfoPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!channel?.logoUrl.isNullOrBlank()) {
                     Box(
-                        Modifier.size(54.dp, 34.dp).clip(RoundedCornerShape(6.dp)).background(Color.White.copy(alpha = 0.08f)),
+                        Modifier.size(54.dp, 34.dp).background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(6.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
                         com.crimson.ui.components.ChannelLogo(channel?.logoUrl, channel?.shortName.orEmpty(), Modifier.padding(4.dp).fillMaxSize(), textSize = 10.sp)
@@ -229,8 +228,7 @@ private fun InfoPanel(
         Box(
             Modifier
                 .size(width = theme.previewWidth, height = theme.previewHeight)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Crimson.Surface)
+                .background(Crimson.Surface, RoundedCornerShape(10.dp))
                 .border(1.dp, Crimson.Stroke, RoundedCornerShape(10.dp))
                 .tvInteractive(onSelect = actions.onSelect, focusTarget = false),
             contentAlignment = Alignment.Center,
@@ -253,8 +251,7 @@ private fun FavoriteBadge(starred: Boolean, onToggle: () -> Unit) {
     var hovered by remember { mutableStateOf(false) }
     Row(
         Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (hovered) Color.White else Crimson.Glass)
+            .background(if (hovered) Color.White else Crimson.ControlFill, RoundedCornerShape(50))
             .tvInteractive(onSelect = onToggle, onHover = { hovered = it }, focusTarget = false)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -275,8 +272,7 @@ private fun HintKey(icon: ImageVector, label: String, onClick: () -> Unit) {
     var hovered by remember { mutableStateOf(false) }
     Row(
         Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (hovered) Color.White else Crimson.Surface)
+            .background(if (hovered) Color.White else Crimson.Surface, RoundedCornerShape(50))
             .tvInteractive(onSelect = onClick, onHover = { hovered = it }, focusTarget = false)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -298,15 +294,14 @@ private fun ProgramDetailsDialog(
 ) {
     Box(
         modifier
-            .background(Color.Black.copy(alpha = 0.7f))
+            .background(Color.Black.copy(alpha = 0.9f))
             .tvInteractive(onSelect = onDismiss, focusTarget = false),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             Modifier
                 .width(540.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Crimson.SurfaceRaised)
+                .background(Crimson.SurfaceRaised, RoundedCornerShape(12.dp))
                 .tvInteractive(onSelect = {}, focusTarget = false)
                 .padding(26.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),

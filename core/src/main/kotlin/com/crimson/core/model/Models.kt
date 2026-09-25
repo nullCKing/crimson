@@ -176,6 +176,8 @@ data class RawVodInfo(
     val mpaa: String? = null,
     /** A YouTube id or URL, when the panel carries one. */
     val trailer: String? = null,
+    /** The Movie Database's id, which many panels copy in; a second way to find subtitles. */
+    val tmdbId: String? = null,
 )
 
 /** A TV Series item from `get_series`. */
@@ -222,5 +224,6 @@ data class RawSeriesInfo(
     val cast: String? = null,
     val director: String? = null,
     val rating: String? = null,
+    val tmdbId: String? = null,
 )
 

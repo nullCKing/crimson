@@ -15,6 +15,7 @@ import com.crimson.core.epg.XmltvTime
 import com.crimson.core.model.Country
 import com.crimson.core.model.FilterRules
 import com.crimson.core.model.Market
+import com.crimson.core.skip.ThemeSkipChoice
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -52,7 +53,32 @@ data class AppSettings(
     val titleIndexVersion: Int = 0,
     /** Whether focusing a live channel plays it in the Live TV hero after a moment. */
     val livePreviews: Boolean = true,
-)
+    /** Captions on or off, remembered between titles the way a streaming service remembers it. */
+    val captions: Boolean = false,
+    val captionSize: CaptionSize = CaptionSize.MEDIUM,
+    /** A dark box behind the text (the most legible) or just an outline around it. */
+    val captionBackground: Boolean = true,
+    /** `[door slams]` and speaker names, as closed captions have them; off for plain subtitles. */
+    val captionSoundDescriptions: Boolean = true,
+    /** Louder dialogue, quieter explosions; see DialogueLeveler. */
+    val dialogueBoost: Boolean = false,
+    /** How bright full-screen video is drawn, in percent; the menus are never dimmed. */
+    val videoBrightness: Int = 100,
+    /** English audio when a file has several tracks: the dub, for anime. */
+    val preferEnglishAudio: Boolean = true,
+    /** Theme-song skipping, per show, where the viewer has changed it; see [themeSkipFor]. */
+    val themeSkip: Map<String, ThemeSkipChoice> = emptyMap(),
+) {
+    /** What to skip for a show: the viewer's choice, or the built-in one for the shows asked for. */
+    fun themeSkipFor(show: String): ThemeSkipChoice = themeSkip[show] ?: ThemeSkipChoice.defaultFor(show)
+}
+
+enum class CaptionSize(val label: String, val scale: Float) {
+    SMALL("Small", 0.8f), MEDIUM("Medium", 1f), LARGE("Large", 1.25f), EXTRA_LARGE("Extra large", 1.55f);
+
+    fun next(): CaptionSize = entries[(ordinal + 1) % entries.size]
+    fun previous(): CaptionSize = entries[(ordinal + entries.size - 1) % entries.size]
+}
 
 /**
  * Settings, in DataStore.
@@ -91,6 +117,14 @@ class SettingsStore private constructor(private val dataStore: DataStore<Prefere
             hasCompletedImport = prefs[KEY_IMPORTED] ?: false,
             titleIndexVersion = prefs[KEY_TITLE_INDEX] ?: 0,
             livePreviews = prefs[KEY_LIVE_PREVIEWS] ?: true,
+            captions = prefs[KEY_CAPTIONS] ?: false,
+            captionSize = prefs[KEY_CAPTION_SIZE]?.let { name -> CaptionSize.entries.firstOrNull { it.name == name } } ?: CaptionSize.MEDIUM,
+            captionBackground = prefs[KEY_CAPTION_BACKGROUND] ?: true,
+            captionSoundDescriptions = prefs[KEY_CAPTION_SDH] ?: true,
+            dialogueBoost = prefs[KEY_DIALOGUE_BOOST] ?: false,
+            videoBrightness = (prefs[KEY_VIDEO_BRIGHTNESS] ?: 100).coerceIn(MIN_BRIGHTNESS, 100),
+            preferEnglishAudio = prefs[KEY_ENGLISH_AUDIO] ?: true,
+            themeSkip = ThemeSkipChoice.decode(prefs[KEY_THEME_SKIP].orEmpty()),
         )
     }
 
@@ -145,9 +179,34 @@ class SettingsStore private constructor(private val dataStore: DataStore<Prefere
 
     suspend fun setLivePreviews(on: Boolean) = dataStore.edit { it[KEY_LIVE_PREVIEWS] = on }
 
+    suspend fun setCaptions(on: Boolean) = dataStore.edit { it[KEY_CAPTIONS] = on }
+
+    suspend fun setCaptionSize(size: CaptionSize) = dataStore.edit { it[KEY_CAPTION_SIZE] = size.name }
+
+    suspend fun setCaptionBackground(on: Boolean) = dataStore.edit { it[KEY_CAPTION_BACKGROUND] = on }
+
+    suspend fun setCaptionSoundDescriptions(on: Boolean) = dataStore.edit { it[KEY_CAPTION_SDH] = on }
+
+    suspend fun setDialogueBoost(on: Boolean) = dataStore.edit { it[KEY_DIALOGUE_BOOST] = on }
+
+    suspend fun setVideoBrightness(percent: Int) = dataStore.edit { it[KEY_VIDEO_BRIGHTNESS] = percent.coerceIn(MIN_BRIGHTNESS, 100) }
+
+    suspend fun setPreferEnglishAudio(on: Boolean) = dataStore.edit { it[KEY_ENGLISH_AUDIO] = on }
+
+    suspend fun setThemeSkip(show: String, choice: ThemeSkipChoice) = dataStore.edit { prefs ->
+        val others = prefs[KEY_THEME_SKIP].orEmpty().filterNot { it.substringBefore('|') == show }
+        prefs[KEY_THEME_SKIP] = others.toSet() + choice.encode(show)
+    }
+
     suspend fun clear() = dataStore.edit { it.clear() }
 
     companion object {
+        /** The dimmest video can go: dark enough for a dark room, never black. */
+        const val MIN_BRIGHTNESS = 5
+
+        /** The brightness steps Left and Right move through. */
+        val BRIGHTNESS_STEPS = listOf(5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+
         private val stores = HashMap<String, SettingsStore>()
 
         /**
@@ -185,5 +244,13 @@ class SettingsStore private constructor(private val dataStore: DataStore<Prefere
         private val KEY_IMPORTED = booleanPreferencesKey("import_completed")
         private val KEY_TITLE_INDEX = intPreferencesKey("title_index_version")
         private val KEY_LIVE_PREVIEWS = booleanPreferencesKey("live_previews")
+        private val KEY_CAPTIONS = booleanPreferencesKey("captions")
+        private val KEY_CAPTION_SIZE = stringPreferencesKey("caption_size")
+        private val KEY_CAPTION_BACKGROUND = booleanPreferencesKey("caption_background")
+        private val KEY_CAPTION_SDH = booleanPreferencesKey("caption_sound_descriptions")
+        private val KEY_DIALOGUE_BOOST = booleanPreferencesKey("dialogue_boost")
+        private val KEY_VIDEO_BRIGHTNESS = intPreferencesKey("video_brightness")
+        private val KEY_ENGLISH_AUDIO = booleanPreferencesKey("prefer_english_audio")
+        private val KEY_THEME_SKIP = stringSetPreferencesKey("theme_skip")
     }
 }

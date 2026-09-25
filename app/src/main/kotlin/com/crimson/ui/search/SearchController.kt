@@ -28,6 +28,8 @@ data class SearchState(
     val shows: List<TitleTile> = emptyList(),
     /** Said when the search moved on from what was asked for, e.g. to a team's name. */
     val note: String? = null,
+    /** The result the viewer opened, so coming back puts the cursor on it again. */
+    val openedKey: String? = null,
 ) {
     val hasQuery: Boolean get() = query.isNotBlank()
     val isEmpty: Boolean get() = channels.isEmpty() && movies.isEmpty() && shows.isEmpty()
@@ -51,19 +53,34 @@ class SearchController(
     val state: StateFlow<SearchState> = _state.asStateFlow()
     private var job: Job? = null
 
+    /** Forgets the search entirely: the viewer has left the search page. */
     fun reset() {
         job?.cancel()
+        fallbacks = emptyList()
+        original = null
         _state.value = SearchState()
     }
 
     private var fallbacks: List<String> = emptyList()
     private var original: String? = null
 
+    /**
+     * A fresh search: [query] typed in, nothing of the last one left. The previous results are
+     * cleared before the new ones are looked up, never shown under the new query in the meantime
+     * — a game's search used to show the channel the previous game had found until the new
+     * lookup landed, or for good if it never did.
+     */
     fun open(query: String, scope: SearchScope, fallbacks: List<String> = emptyList()) {
+        job?.cancel()
         this.fallbacks = fallbacks
         original = query.takeIf { fallbacks.isNotEmpty() }
-        _state.value = _state.value.copy(scope = scope, note = null)
+        _state.value = SearchState(scope = scope)
         setQuery(query, debounce = false)
+    }
+
+    /** Remembers which result was opened, for when the viewer comes back. */
+    fun opened(key: String) {
+        _state.value = _state.value.copy(openedKey = key)
     }
 
     fun setScope(scope: SearchScope) {

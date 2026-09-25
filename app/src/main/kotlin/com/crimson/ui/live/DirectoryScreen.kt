@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -166,8 +165,7 @@ private fun ListItem(
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(bg)
+            .background(bg, RoundedCornerShape(6.dp))
             .tvInteractive(onSelect = onClick, onFocus = { focused = it; if (it) onFocus() }, focusRequester = focusRequester)
             .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -14,6 +14,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -47,7 +48,10 @@ fun Modifier.cardFocus(
         }
         // No drop shadow: a blurred elevation shadow redrawn on every frame of a scroll was the
         // single most expensive thing on screen, and the ring and the lift read as focus without it.
-        .then(if (focused) Modifier.border(ring, Crimson.FocusRing, shape) else Modifier)
+        // The border is always in the chain and only its colour changes: adding and removing it on
+        // focus, behind a scaled layer, left a second copy of the ring drawn at the unscaled size
+        // (a thin inner outline on every focused card).
+        .border(ring, if (focused) Crimson.FocusRing else Color.Transparent, shape)
 }
 
 /**

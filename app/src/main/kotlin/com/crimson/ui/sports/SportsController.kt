@@ -27,20 +27,40 @@ data class SportsState(
     val updatedAt: Long = 0L,
     val failed: Boolean = false,
 ) {
-    /** Grouped the way a scores page reads: live, then by day, then recent results. */
+    /**
+     * Grouped the way a scores page reads: live, then by day, then recent results. A group too
+     * big to browse as one row (a college Saturday is well over a hundred games) becomes a row
+     * per league and division; so does every group when one college league is picked.
+     */
     val rows: List<FeedRow>
         get() {
             val now = System.currentTimeMillis()
             val shown = events.filter { league == null || it.league.id == league.id }
             val ranked = SportsRepository.rank(shown, now)
             val out = ArrayList<FeedRow>()
-            ranked.filter { it.state == EventState.LIVE }.takeIf { it.isNotEmpty() }?.let {
-                out += FeedRow("sports_live", "Live Now", RowKind.SPORTS, it.map(::GameTile), subtitle = "${it.size} games")
+            fun add(id: String, title: String, games: List<SportsEvent>, order: Comparator<SportsEvent>?) {
+                if (games.isEmpty()) return
+                val split = games.size > SPLIT_OVER || league?.divisions?.isNotEmpty() == true
+                val sections = if (split) games.groupBy(::sectionOf).entries.sortedBy { sectionOrder(it.value.first()) }.map { it.key to it.value }
+                else listOf("" to games)
+                for ((section, list) in sections) {
+                    val sorted = if (order != null) list.sortedWith(order) else list
+                    out += FeedRow(
+                        if (section.isEmpty()) id else "${id}_$section",
+                        if (section.isEmpty()) title else "$title · $section",
+                        RowKind.SPORTS,
+                        sorted.map(::GameTile),
+                        subtitle = if (list.size == 1) "1 game" else "${list.size} games",
+                    )
+                }
             }
+            add("sports_live", "Live Now", ranked.filter { it.state == EventState.LIVE }, null)
             val dayFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
             val zone = TimeZone.getDefault()
             fun dayOf(ms: Long) = Math.floorDiv(ms + zone.getOffset(ms), DAY)
             val today = dayOf(now)
+            // Kick-off order; at the same kick-off, a ranked team's game first.
+            val byStart = compareBy<SportsEvent>({ it.startMs }, { if (it.hasRankedTeam) 0 else 1 })
             ranked.filter { it.state == EventState.UPCOMING && it.startMs - now < 8 * DAY }
                 .groupBy { dayOf(it.startMs) }
                 .toSortedMap()
@@ -50,11 +70,9 @@ data class SportsState(
                         1L -> "Tomorrow"
                         else -> dayFormat.format(Date(games.first().startMs))
                     }
-                    out += FeedRow("sports_day_$day", title, RowKind.SPORTS, games.sortedBy { it.startMs }.map(::GameTile), subtitle = "${games.size} games")
+                    add("sports_day_$day", title, games, byStart)
                 }
-            ranked.filter { it.state == EventState.FINAL && now - it.startMs < 2 * DAY }.takeIf { it.isNotEmpty() }?.let {
-                out += FeedRow("sports_final", "Final Scores", RowKind.SPORTS, it.map(::GameTile))
-            }
+            add("sports_final", "Final Scores", ranked.filter { it.state == EventState.FINAL && now - it.startMs < 2 * DAY }, null)
             return out
         }
 
@@ -63,6 +81,17 @@ data class SportsState(
 
     companion object {
         const val DAY = 86_400_000L
+        /** More games than this in one row and it is split into a row per league. */
+        const val SPLIT_OVER = 24
+
+        /** "College Football · FCS", or the league's name. */
+        fun sectionOf(event: SportsEvent): String =
+            event.division?.let { "${event.league.name} (${it})" } ?: event.league.name
+
+        /** Leagues in the Sports page's own order, a league's divisions in theirs. */
+        private fun sectionOrder(event: SportsEvent): Int =
+            com.crimson.core.sports.Leagues.ALL.indexOfFirst { it.id == event.league.id } * 10 +
+                (event.league.divisions.indexOfFirst { it.label == event.division }.takeIf { it >= 0 } ?: 0)
     }
 }
 

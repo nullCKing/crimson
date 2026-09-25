@@ -326,6 +326,7 @@ object XtreamParser {
         var durationSecs: Int? = null
         var mpaa: String? = null
         var trailer: String? = null
+        var tmdb: String? = null
 
         JsonReader(reader).use { json ->
             if (json.peek() != JsonReader.Token.BEGIN_OBJECT) {
@@ -346,6 +347,7 @@ object XtreamParser {
                                     "genre" -> genre = json.nextString()
                                     "mpaa_rating", "mpaa", "age" -> json.nextString()?.takeIf { it.isNotBlank() }?.let { mpaa = it }
                                     "youtube_trailer" -> trailer = json.nextString()
+                                    "tmdb_id", "tmdb" -> tmdb = json.nextString()?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) && it != "0" }
                                     "releasedate", "release_date" -> releaseDate = json.nextString()
                                     "rating" -> rating = json.nextString()
                                     "cast", "actors" -> cast = json.nextString()
@@ -402,6 +404,7 @@ object XtreamParser {
             durationSecs = durationSecs,
             mpaa = mpaa,
             trailer = trailer,
+            tmdbId = tmdb,
         )
     }
 
@@ -467,6 +470,7 @@ object XtreamParser {
         var cast: String? = null
         var director: String? = null
         var rating: String? = null
+        var tmdb: String? = null
         val seasons = ArrayList<Int>()
         val episodes = LinkedHashMap<Int, ArrayList<com.crimson.core.model.RawEpisode>>()
 
@@ -491,6 +495,7 @@ object XtreamParser {
                                     "cast" -> cast = json.nextString()
                                     "director" -> director = json.nextString()
                                     "rating" -> rating = json.nextString()
+                                    "tmdb", "tmdb_id" -> tmdb = json.nextString()?.trim()?.takeIf { it.isNotEmpty() && it.all(Char::isDigit) && it != "0" }
                                     else -> json.skipValue()
                                 }
                             }
@@ -587,6 +592,7 @@ object XtreamParser {
             cast = cast,
             director = director,
             rating = rating,
+            tmdbId = tmdb,
         )
     }
 

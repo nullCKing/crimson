@@ -77,7 +77,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     private val container = AppContainer.get(app)
 
-    private val _ui = MutableStateFlow(UiState())
+    private val _ui = MutableStateFlow(UiState(hasSubtitleKey = com.crimson.BuildConfig.OPENSUBTITLES_API_KEY.isNotBlank()))
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     private val _guide = MutableStateFlow(GuideState(categoryId = DEFAULT_CATEGORY_ID))
@@ -91,6 +91,9 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     val playback: StateFlow<PlaybackState> get() = container.player.state
 
+    /** The stream's own captions as the player decodes them. */
+    val cues get() = container.player.cues
+
     private val info = InfoCache { container.client }
 
     val live = LiveController(
@@ -103,6 +106,14 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
     val details = DetailsController(container, info)
     val search = SearchController(container, { _guide.value.allChannels }) { live.nowPlaying(it) }
     val sports = SportsController(container)
+    val captions = com.crimson.ui.player.CaptionsController(container.player, container.subtitles)
+    val themeSkip = com.crimson.ui.player.ThemeSkipController(container.player, container.themeSkips)
+
+    private val _vodControls = MutableStateFlow(com.crimson.ui.player.VodControls())
+    /** The film-and-episode controls: shown or not, what has focus, where a scrub is heading. */
+    val vodControls: StateFlow<com.crimson.ui.player.VodControls> = _vodControls.asStateFlow()
+    private var controlsHideJob: Job? = null
+    private var scrubSettleJob: Job? = null
 
     private val stack = ArrayList<Route>()
 
@@ -164,8 +175,11 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
     fun navigate(route: Route) {
         if (this.route == route) return
         leaving(this.route, route)
-        // A second visit to the same page moves it to the top instead of stacking a copy.
+        // A second visit to the same page moves it to the top instead of stacking a copy. There
+        // is only ever one search page: a new search replaces an older one wherever it sits, so
+        // Back can never surface a search from earlier (last night's game, say).
         stack.remove(route)
+        if (route is Route.Search) stack.removeAll { it is Route.Search }
         stack += route
         publish()
         entered(route)
@@ -207,6 +221,10 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         if (from == Route.Watching && to != Route.Watching) {
             saveProgress(final = true)
             progressJob?.cancel()
+            captions.stop()
+            themeSkip.stop()
+            resetVodControls()
+            if (_ui.value.playerMenuOpen) _ui.value = _ui.value.copy(playerMenuOpen = false)
             // Watching is over once the viewer leaves it, except into the guide, whose preview
             // window is the same stream.
             if (to != Route.Guide) {
@@ -218,7 +236,16 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             if (playback.value.channel != null && _ui.value.nowPlaying?.isVod != true) container.player.stop()
         }
         if (from == Route.Main(MainTab.LIVE) && to != Route.Watching && to != Route.Guide) stopPreview()
+        // Search keeps its query and results while the viewer looks at a result (a title, a
+        // channel) and comes back; leaving the search page itself is what clears it.
+        if (from is Route.Search && to !is Route.Details && to != Route.Watching && to != Route.Guide) {
+            search.reset()
+            searchOpenedFor = null
+        }
     }
+
+    /** The search page the controller's state belongs to; returning to it must not re-run it. */
+    private var searchOpenedFor: Route.Search? = null
 
     private fun entered(route: Route) {
         if (sessionJob == null && route !is Route.Profiles && route !is Route.EditProfile && route != Route.Starting) return
@@ -232,8 +259,15 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 MainTab.MY_LIST -> refreshMyList()
             }
             is Route.Details -> details.open(route.kind, route.id)
-            is Route.Search -> search.open(route.query, route.scope, route.fallbacks)
+            is Route.Search -> if (searchOpenedFor != route) {
+                searchOpenedFor = route
+                search.open(route.query, route.scope, route.fallbacks)
+            }
             is Route.Directory -> live.openDirectory()
+            // Back from the guide to live TV: the channel's captions come back with it.
+            Route.Watching -> _ui.value.nowPlaying?.takeIf { captions.target?.streamId != it.streamId && !it.isVod }?.let { np ->
+                startCaptions(com.crimson.ui.player.CaptionsController.Target(np.streamId, isLive = true) { null })
+            }
             else -> Unit
         }
     }
@@ -373,6 +407,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         search.scope = sessionScope
         live.scope = sessionScope
         sports.scope = sessionScope
+        captions.scope = sessionScope
+        themeSkip.scope = sessionScope
         observeSettings()
         observeCategories()
     }
@@ -382,8 +418,10 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         sessionJob = null
         channelsJob = null; importJob = null; programsJob = null; libraryJob = null; progressJob = null
         container.player.stop()
+        if (::sessionScope.isInitialized) { captions.stop(); themeSkip.stop() }
         previewActive = false
         feed.reset(); details.reset(); search.reset(); live.reset(); sports.reset()
+        searchOpenedFor = null
         info.clear()
         rawCategories = emptyList()
         zapList = emptyList()
@@ -392,6 +430,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         _myList.value = emptyList()
         _ui.value = UiState(
             route = route,
+            hasSubtitleKey = _ui.value.hasSubtitleKey,
             profiles = _ui.value.profiles,
             profilesEncrypted = _ui.value.profilesEncrypted,
         )
@@ -404,6 +443,10 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 val previous = _ui.value.settings
                 _ui.value = _ui.value.copy(settings = settings)
                 live.previewsEnabled = settings.livePreviews
+                container.player.setDialogueBoost(settings.dialogueBoost)
+                container.player.setPreferEnglishAudio(settings.preferEnglishAudio)
+                captions.setSoundDescriptions(settings.captionSoundDescriptions)
+                if (previous.captions != settings.captions && captions.target != null) captions.setEnabled(settings.captions)
                 if (previous.rules != settings.rules && channelsJob != null) restartChannelObservation(settings.rules)
             }
         }
@@ -780,6 +823,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         sessionScope.launch {
             val settings = container.settings.settings.first()
             val client = container.client ?: return@launch
+            themeSkip.stop()
             container.player.play(
                 PlayableChannel(
                     streamId = channel.streamId,
@@ -789,6 +833,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 )
             )
             if (!remember) return@launch
+            startCaptions(com.crimson.ui.player.CaptionsController.Target(channel.streamId, isLive = true) { null })
             container.settings.setCurrentChannel(channel.streamId)
             _ui.value = _ui.value.copy(
                 nowPlaying = NowPlaying(NowPlaying.Kind.LIVE, channel.streamId, channel.name, image = channel.logoUrl),
@@ -842,6 +887,19 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             val tile = entity?.let(Mappers::tile)
             val ext = details?.containerExtension ?: entity?.containerExtension ?: "mp4"
             val title = tile?.name ?: details?.name ?: "Movie"
+            themeSkip.stop()
+            // Before play: whether the audio must be decoded for caption sync is decided as the
+            // stream is prepared.
+            startCaptions(com.crimson.ui.player.CaptionsController.Target(id, isLive = false) {
+                val year = entity?.titleYear ?: tile?.year ?: details?.year
+                val keys = listOfNotNull(entity?.titleKey, entity?.titleKeyAlt)
+                com.crimson.core.subtitles.SubtitleQuery(
+                    title = title,
+                    year = year,
+                    imdbId = container.subtitles.imdbId(TitleKind.MOVIE, keys, year),
+                    tmdbId = details?.tmdbId,
+                )
+            })
             container.player.play(
                 PlayableChannel(id, 0, title, client.vodStreamUrl(id, ext), isLive = false, startPositionMs = positionMs)
             )
@@ -855,8 +913,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                     backdrop = details?.backdrop,
                     containerExtension = ext,
                 ),
-                controlsToken = System.currentTimeMillis(),
             )
+            showVodControls()
             startProgressSaver()
             if (route != Route.Watching) navigate(Route.Watching)
         }
@@ -870,6 +928,35 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             val entity = withContext(Dispatchers.IO) { container.database.libraryDao().series(seriesId) }
             val seriesName = entity?.let(Mappers::tile)?.name ?: series?.name ?: "Series"
             val ext = episode.containerExtension ?: "mp4"
+            startCaptions(com.crimson.ui.player.CaptionsController.Target(episode.id, isLive = false) {
+                val year = entity?.titleYear ?: series?.year
+                val keys = listOfNotNull(entity?.titleKey, entity?.titleKeyAlt)
+                com.crimson.core.subtitles.SubtitleQuery(
+                    title = seriesName,
+                    year = year,
+                    imdbId = container.subtitles.imdbId(TitleKind.SERIES, keys, year),
+                    tmdbId = series?.tmdbId,
+                    season = episode.season,
+                    episode = episode.number,
+                )
+            })
+            // Also before play: listening for the theme needs the audio decoded.
+            val show = com.crimson.core.skip.ThemeSkipChoice.showKey(seriesName)
+            themeSkip.start(
+                com.crimson.ui.player.ThemeSkipController.Target(
+                    episodeId = episode.id,
+                    show = show,
+                    season = episode.season,
+                    episode = episode.number,
+                    ids = {
+                        val year = entity?.titleYear ?: series?.year
+                        val keys = listOfNotNull(entity?.titleKey, entity?.titleKeyAlt)
+                        container.subtitles.imdbId(TitleKind.SERIES, keys, year) to series?.tmdbId
+                    },
+                    onReachedEnd = ::themeSkippedToEnd,
+                ),
+                _ui.value.settings.themeSkipFor(show),
+            )
             container.player.play(
                 PlayableChannel(episode.id, 0, seriesName, client.seriesStreamUrl(episode.id, ext), isLive = false, startPositionMs = positionMs)
             )
@@ -888,8 +975,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                     containerExtension = ext,
                     next = next?.let { NextEpisode(it.id, it.season, it.number, it.title, it.containerExtension, it.image) },
                 ),
-                controlsToken = System.currentTimeMillis(),
             )
+            showVodControls()
             startProgressSaver()
             if (route != Route.Watching) navigate(Route.Watching)
         }
@@ -1025,7 +1112,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
     /** Keys while a film or episode is on screen. Returns true when handled. */
     fun vodKey(action: VodKey): Boolean {
         val player = container.player
-        _ui.value = _ui.value.copy(controlsToken = System.currentTimeMillis())
+        showVodControls()
         when (action) {
             VodKey.TOGGLE -> player.togglePause()
             VodKey.BACK_10 -> player.seekBy(-10_000L)
@@ -1042,7 +1129,86 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     fun seekTo(positionMs: Long) {
         container.player.seekTo(positionMs)
-        _ui.value = _ui.value.copy(controlsToken = System.currentTimeMillis())
+        showVodControls()
+    }
+
+    /** A remote key on a film or episode, through [com.crimson.ui.player.VodControls]; false lets Back leave. */
+    fun vodControlKey(key: com.crimson.ui.player.VodControls.Key): Boolean {
+        val np = _ui.value.nowPlaying ?: return false
+        val player = container.player
+        val ctx = com.crimson.ui.player.VodControls.Context(
+            positionMs = player.positionMs(),
+            durationMs = player.durationMs(),
+            buttons = vodButtons(np),
+            now = System.currentTimeMillis(),
+        )
+        val (next, effects) = _vodControls.value.onKey(key, ctx)
+        _vodControls.value = next
+        effects.forEach(::applyVodEffect)
+        if (next.scrubMs != null) settleScrubLater() else scrubSettleJob?.cancel()
+        hideVodControlsLater()
+        return effects.none { it == com.crimson.ui.player.VodControls.Effect.Leave }
+    }
+
+    /** Brings the controls up (a new title, a media key, the pointer), focus on [button] or the time bar. */
+    fun showVodControls(button: com.crimson.ui.player.VodButton? = null) {
+        if (_ui.value.nowPlaying?.isVod != true) return
+        _vodControls.value = _vodControls.value.copy(visible = true, button = button ?: _vodControls.value.button.takeIf { _vodControls.value.visible })
+        hideVodControlsLater()
+    }
+
+    private fun vodButtons(np: NowPlaying) = listOfNotNull(
+        com.crimson.ui.player.VodButton.PLAY_PAUSE,
+        com.crimson.ui.player.VodButton.BACK_10,
+        com.crimson.ui.player.VodButton.FORWARD_10,
+        com.crimson.ui.player.VodButton.AUDIO_SUBTITLES,
+        com.crimson.ui.player.VodButton.NEXT_EPISODE.takeIf { np.next != null },
+    )
+
+    private fun applyVodEffect(effect: com.crimson.ui.player.VodControls.Effect) {
+        val player = container.player
+        when (effect) {
+            com.crimson.ui.player.VodControls.Effect.TogglePause -> player.togglePause()
+            is com.crimson.ui.player.VodControls.Effect.SeekBy -> player.seekBy(effect.ms)
+            is com.crimson.ui.player.VodControls.Effect.SeekTo -> player.seekTo(effect.ms)
+            com.crimson.ui.player.VodControls.Effect.OpenMenu -> openPlayerMenu()
+            com.crimson.ui.player.VodControls.Effect.Next -> playNextEpisode()
+            com.crimson.ui.player.VodControls.Effect.Leave -> Unit
+        }
+    }
+
+    /** The scrub jumps once the keys have stopped for a moment. */
+    private fun settleScrubLater() {
+        scrubSettleJob?.cancel()
+        scrubSettleJob = sessionScope.launch {
+            delay(com.crimson.ui.player.VodControls.SETTLE_MS)
+            val (next, effects) = _vodControls.value.commit()
+            _vodControls.value = next
+            effects.forEach(::applyVodEffect)
+            hideVodControlsLater()
+        }
+    }
+
+    /** Hides the controls after a few idle seconds, but never while paused, scrubbing or in the menu. */
+    private fun hideVodControlsLater() {
+        controlsHideJob?.cancel()
+        if (!_vodControls.value.visible) return
+        controlsHideJob = sessionScope.launch {
+            while (true) {
+                delay(com.crimson.ui.player.VodControls.HIDE_MS)
+                val c = _vodControls.value
+                if (!c.visible) return@launch
+                if (playback.value.isPaused || c.scrubMs != null || _ui.value.playerMenuOpen) continue
+                _vodControls.value = c.hidden()
+                return@launch
+            }
+        }
+    }
+
+    private fun resetVodControls() {
+        controlsHideJob?.cancel()
+        scrubSettleJob?.cancel()
+        _vodControls.value = com.crimson.ui.player.VodControls()
     }
 
     fun positionMs(): Long = container.player.positionMs()
@@ -1194,6 +1360,98 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setLivePreviews(on: Boolean) {
         sessionScope.launch { container.settings.setLivePreviews(on) }
+    }
+
+    // ================================================================== captions, sound, picture
+
+    private fun startCaptions(target: com.crimson.ui.player.CaptionsController.Target) {
+        val s = _ui.value.settings
+        captions.start(target, enabled = s.captions, keepSoundDescriptions = s.captionSoundDescriptions)
+    }
+
+    /** An ending theme skipped that ran to the end: on to the next episode, as the credits would. */
+    private fun themeSkippedToEnd() {
+        if (_ui.value.nowPlaying?.next != null) playNextEpisode()
+        else container.player.seekTo(container.player.durationMs())
+    }
+
+    /** Switches skipping the opening ([intro]) or the ending theme for the show playing, and remembers it. */
+    fun toggleThemeSkip(intro: Boolean) {
+        val s = themeSkip.state.value
+        val show = s.show ?: return
+        val choice = if (intro) s.choice.copy(intro = !s.choice.intro) else s.choice.copy(ending = !s.choice.ending)
+        themeSkip.setChoice(choice)
+        _ui.value = _ui.value.copy(settings = _ui.value.settings.copy(themeSkip = _ui.value.settings.themeSkip + (show to choice)))
+        sessionScope.launch { container.settings.setThemeSkip(show, choice) }
+    }
+
+    fun forgetThemes() = themeSkip.forget()
+
+    /** Plays one of the title's audio tracks (a language), from the Audio & Subtitles menu. */
+    fun selectAudio(id: String) = container.player.selectAudio(id)
+
+    fun togglePreferEnglishAudio() {
+        val on = !_ui.value.settings.preferEnglishAudio
+        _ui.value = _ui.value.copy(settings = _ui.value.settings.copy(preferEnglishAudio = on))
+        container.player.setPreferEnglishAudio(on)
+        sessionScope.launch { container.settings.setPreferEnglishAudio(on) }
+    }
+
+    fun openPlayerMenu() {
+        if (route == Route.Watching) _ui.value = _ui.value.copy(playerMenuOpen = true)
+    }
+
+    fun closePlayerMenu() {
+        _ui.value = _ui.value.copy(playerMenuOpen = false)
+        // Back where the menu was opened from.
+        showVodControls(com.crimson.ui.player.VodButton.AUDIO_SUBTITLES)
+    }
+
+    fun toggleCaptions() {
+        val on = !_ui.value.settings.captions
+        _ui.value = _ui.value.copy(settings = _ui.value.settings.copy(captions = on))
+        captions.setEnabled(on)
+        sessionScope.launch { container.settings.setCaptions(on) }
+    }
+
+    fun setCaptions(on: Boolean) {
+        if (_ui.value.settings.captions != on) toggleCaptions()
+    }
+
+    fun tryOtherCaptions() = captions.tryAnother()
+
+    fun nudgeCaptions(deltaMs: Long) = captions.nudge(deltaMs)
+
+    fun stepCaptionSize(delta: Int) {
+        val current = _ui.value.settings.captionSize
+        val next = if (delta > 0) current.next() else current.previous()
+        sessionScope.launch { container.settings.setCaptionSize(next) }
+    }
+
+    fun toggleCaptionBackground() {
+        val on = !_ui.value.settings.captionBackground
+        sessionScope.launch { container.settings.setCaptionBackground(on) }
+    }
+
+    fun setCaptionSoundDescriptions(on: Boolean) {
+        sessionScope.launch { container.settings.setCaptionSoundDescriptions(on) }
+    }
+
+    fun toggleDialogueBoost() {
+        val on = !_ui.value.settings.dialogueBoost
+        container.player.setDialogueBoost(on)
+        sessionScope.launch { container.settings.setDialogueBoost(on) }
+    }
+
+    /** One step along [com.crimson.data.settings.SettingsStore.BRIGHTNESS_STEPS]. */
+    fun stepVideoBrightness(delta: Int) {
+        val steps = com.crimson.data.settings.SettingsStore.BRIGHTNESS_STEPS
+        val current = _ui.value.settings.videoBrightness
+        val index = steps.indexOfFirst { it >= current }.takeIf { it >= 0 } ?: steps.lastIndex
+        val next = steps[(index + delta).coerceIn(0, steps.lastIndex)]
+        // Shown at once; the store catches up.
+        _ui.value = _ui.value.copy(settings = _ui.value.settings.copy(videoBrightness = next))
+        sessionScope.launch { container.settings.setVideoBrightness(next) }
     }
 
     private fun fetchNewCategories() {

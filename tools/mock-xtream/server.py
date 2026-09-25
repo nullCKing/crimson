@@ -227,6 +227,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_xmltv(params)
             elif parsed.path.startswith("/movie/") or parsed.path.startswith("/series/"):
                 self.handle_film(parsed.path)
+            elif parsed.path.startswith("/subtitles/"):
+                self.handle_subtitles(parsed.path)
+            elif parsed.path in ("/segments", "/v3/media"):
+                self.handle_intro_times(parsed.path, params)
             elif parsed.path.startswith("/live/"):
                 self.handle_live(parsed.path)
             elif parsed.path == "/_truth":
@@ -357,6 +361,24 @@ class Handler(BaseHTTPRequestHandler):
             self._text("forbidden\n", 403)
             return
         film = os.path.join(MEDIA_DIR, "film.mp4")
+        content_type = "video/mp4"
+        if _args.dual_audio and parts[0] == "movie":
+            # Audio-track testing: Japanese marked as the default, English second, as a
+            # dual-audio anime release has them (made by make_dialogue.py).
+            film = os.path.join(MEDIA_DIR, "dual.mkv")
+            content_type = "video/x-matroska"
+        elif _args.themes and parts[0] == "series":
+            # Theme-skip testing: every show's episodes are the four theme test episodes, in turn.
+            stream = parts[3].rpartition(".")[0]
+            number = int(stream) % 100 if stream.isdigit() else 1
+            film = os.path.join(MEDIA_DIR, "theme_ep%d.mp4" % ((max(number, 1) - 1) % 4 + 1))
+        elif _args.captions:
+            # Caption testing: odd ids carry an English subtitle track in the file, even ids
+            # carry none, so the app has to find theirs online (from handle_subtitles).
+            stream = parts[3].rpartition(".")[0]
+            number = int(stream) if stream.isdigit() else 0
+            film = os.path.join(MEDIA_DIR, "dialogue_subs.mkv" if number % 2 else "dialogue.mkv")
+            content_type = "video/x-matroska"
         if not os.path.exists(film):
             self._text("test media unavailable: %s\n" % (_media_error or "still generating"), 503)
             return
@@ -372,7 +394,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, size))
         else:
             self.send_response(200)
-        self.send_header("Content-Type", "video/mp4")
+        self.send_header("Content-Type", content_type)
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Content-Length", str(end - start + 1))
         self.end_headers()
@@ -385,6 +407,53 @@ class Handler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
                 remaining -= len(chunk)
+
+    def handle_intro_times(self, path, params):
+        """
+        Stand-ins for the two intro databases (`--themes`, with the app built -PintroDb=...).
+        IntroDB (/segments) knows episode 1 of every show, with the true times from themes.json,
+        so skipping by database can be seen; nothing else is known to either, so every other
+        episode has to be learned by ear.
+        """
+        episode = params.get("episode", ["0"])[0]
+        season = params.get("season", ["0"])[0]
+        truth_file = os.path.join(MEDIA_DIR, "themes.json")
+        if path == "/segments" and episode == "1" and season == "1" and os.path.exists(truth_file):
+            with open(truth_file) as fh:
+                truth = json.load(fh)["1"]
+            self._json({
+                "imdb_id": params.get("imdb_id", [""])[0], "season": 1, "episode": 1,
+                "intro": {"start_ms": truth["intro"][0], "end_ms": truth["intro"][1]},
+                "outro": {"start_ms": truth["outro"][0], "end_ms": truth["outro"][1]},
+                "recap": None,
+            })
+            return
+        self._json({"error": "media not found"}, status=404)
+
+    def handle_subtitles(self, path):
+        """
+        A stand-in for the OpenSubtitles Stremio addon, for a debug build pointed here with
+        -PsubtitleAddon=http://10.0.2.2:8080. Every title gets the caption test film's subtitles,
+        2.7 s early (dialogue_early.srt), so the app's automatic sync has something to correct.
+        """
+        if path.startswith("/subtitles/file/"):
+            name = os.path.basename(path)
+            srt = os.path.join(MEDIA_DIR, name)
+            if not name.endswith(".srt") or not os.path.exists(srt):
+                self._text("no such subtitle\n", 404)
+                return
+            body = open(srt, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-subrip; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        host = self.headers.get("Host", "127.0.0.1")
+        self._json({"subtitles": [
+            {"id": "mock-early", "url": "http://%s/subtitles/file/dialogue_early.srt" % host,
+             "lang": "eng", "m": "i", "subtitleFileName": "Mock.Release.WEB.srt", "fpsMilli": 23976},
+        ]})
 
     def handle_live(self, path):
         parts = path.strip("/").split("/")
@@ -526,12 +595,32 @@ def main():
     parser.add_argument("--no-media", action="store_true", help="skip FFmpeg media generation")
     parser.add_argument("--public-streams", action="store_true",
                         help="redirect playback to public test streams instead of local media")
+    parser.add_argument("--big", action="store_true",
+                        help="a provider-sized, messy on-demand catalogue (~70k films, ~17k series) for stress tests")
+    parser.add_argument("--snapshot", metavar="DB",
+                        help="replay the channels and catalogue of a real account from an app database pulled from a device")
+    parser.add_argument("--captions", action="store_true",
+                        help="serve the caption test films (make_dialogue.py) as every film and episode")
+    parser.add_argument("--dual-audio", action="store_true",
+                        help="serve media/dual.mkv (Japanese default + English) as every film")
+    parser.add_argument("--themes", action="store_true",
+                        help="serve the theme-skip test episodes (make_themes.py) as every show's episodes")
     parser.add_argument("--verbose", action="store_true")
     _args = parser.parse_args()
 
     global _vod
-    _catalog = fixtures.build_catalog(seed=_args.seed, target_channels=_args.channels)
-    _vod = vod_mod.VodCatalog()
+    if _args.snapshot:
+        import snapshot
+        _catalog = snapshot.load_live(_args.snapshot)
+    else:
+        _catalog = fixtures.build_catalog(seed=_args.seed, target_channels=_args.channels)
+    if _args.snapshot:
+        _vod = snapshot.SnapshotVodCatalog(_args.snapshot)
+    elif _args.big:
+        import big_vod
+        _vod = big_vod.BigVodCatalog()
+    else:
+        _vod = vod_mod.VodCatalog()
     print("mock-xtream: %d films and %d series in the on-demand catalogue" % (len(_vod.movies), len(_vod.series)))
     expected = _catalog.expected_kept
     print("mock-xtream: %d channels in %d categories (%d expected to survive the filter)"

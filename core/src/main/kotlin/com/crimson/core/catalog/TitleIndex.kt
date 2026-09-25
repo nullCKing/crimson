@@ -11,6 +11,8 @@ data class IndexedTitle(
     val rating: Float,
     val votes: Int,
     val genres: List<String>,
+    /** IMDb's id, `tt0133093`: what subtitle services are searched by. Null in an older index. */
+    val imdbId: String? = null,
 ) {
     /** The matching key, with IMDb's year standing in for the one a file name may lack. */
     val key: TitleMatcher.Key get() = TitleMatcher.key(name).copy(year = year)
@@ -56,7 +58,28 @@ object TitleIndex {
         val rating = parts[3].toFloatOrNull() ?: return null
         val votes = parts[4].toIntOrNull() ?: return null
         val genres = parts.getOrNull(5).orEmpty().split(',').map(String::trim).filter(String::isNotEmpty)
-        return IndexedTitle(parts[0], year, kind, rating, votes, genres)
+        val imdbId = parts.getOrNull(6)?.trim()?.takeIf { it.startsWith("tt") }
+        return IndexedTitle(parts[0], year, kind, rating, votes, genres, imdbId)
+    }
+
+    /**
+     * The IMDb id of the title a catalogue entry was matched to, by the same rule the join uses:
+     * the same key (or the alternative reading of it), and a year within one either way when the
+     * entry has one. Later lines are more popular, so the last match wins, as it does in the join.
+     *
+     * A pass over the whole index, done once when a title starts playing — cheaper than a
+     * database column that would need a migration and a full re-join to fill.
+     */
+    fun findImdbId(reader: Reader, kind: TitleKind, keys: Collection<String>, year: Int?): String? {
+        val wanted = keys.filter { it.isNotEmpty() }.toSet()
+        if (wanted.isEmpty()) return null
+        var found: String? = null
+        read(reader) { title ->
+            if (title.kind != kind || title.imdbId == null) return@read
+            if (year != null && (title.year < year - 1 || title.year > year + 1)) return@read
+            if (title.key.text in wanted) found = title.imdbId
+        }
+        return found
     }
 }
 

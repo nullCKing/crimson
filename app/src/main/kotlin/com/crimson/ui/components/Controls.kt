@@ -33,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -53,7 +52,16 @@ import com.crimson.ui.theme.Crimson
 import com.crimson.ui.theme.CrimsonIcons
 import com.crimson.ui.theme.CrimsonType
 
-/** The wordmark: heavy, condensed, red. */
+/**
+ * Whether text may have a blurred shadow. Before Android 9 the hardware renderer blurs text
+ * shadows with RenderScript, and on Fire OS 5 (Fire TV 2nd gen, Android 5.1) that blur crashes
+ * the render thread (SIGSEGV in ScriptIntrinsicBlur::setInput), killing the app the first time
+ * such text is drawn. Android 9's Skia pipeline does not use RenderScript. Unblurred shadows
+ * (blurRadius 0, the guide's) never reach the blur and are safe everywhere.
+ */
+val BlurredTextShadows: Boolean = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
+
+/** The wordmark: heavy, condensed, red, with a soft glow where the renderer can draw one. */
 @Composable
 fun Wordmark(modifier: Modifier = Modifier, size: TextUnit = 24.sp) {
     Text(
@@ -68,7 +76,7 @@ fun Wordmark(modifier: Modifier = Modifier, size: TextUnit = 24.sp) {
             letterSpacing = (size.value * 0.02f).sp,
             color = Crimson.Red,
             fontWeight = FontWeight.Black,
-            shadow = androidx.compose.ui.graphics.Shadow(Crimson.Red.copy(alpha = 0.45f), Offset.Zero, size.value * 0.6f),
+            shadow = if (BlurredTextShadows) androidx.compose.ui.graphics.Shadow(Crimson.Red.copy(alpha = 0.45f), Offset.Zero, size.value * 0.6f) else null,
         ),
     )
 }
@@ -98,9 +106,9 @@ fun CrimsonButton(
             // Red at rest, white under focus: a primary button that was white either way left
             // the viewer unable to tell whether it or its neighbour had the cursor.
             style == ButtonStyle.PRIMARY -> Crimson.Red
-            style == ButtonStyle.DANGER -> Crimson.Red.copy(alpha = 0.18f)
+            style == ButtonStyle.DANGER -> Crimson.Red.copy(alpha = 0.33f)
             style == ButtonStyle.GHOST -> Color.Transparent
-            else -> Crimson.Glass
+            else -> Crimson.ControlFill
         },
         animationSpec = tween(140),
         label = "buttonBg",
@@ -116,8 +124,7 @@ fun CrimsonButton(
     Row(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(shape)
-            .background(background)
+            .background(background, shape)
             .then(if (style == ButtonStyle.GHOST && !focused) Modifier.border(1.dp, Crimson.StrokeStrong, shape) else Modifier)
             .tvInteractive(
                 onSelect = { if (enabled) onClick() },
@@ -151,16 +158,15 @@ fun IconCircleButton(
     var focused by remember { mutableStateOf(false) }
     val bg = when {
         focused -> Color.White
-        selected -> Crimson.GlassStrong
-        else -> Crimson.Glass
+        selected -> Crimson.ControlFillStrong
+        else -> Crimson.ControlFill
     }
     val scale by animateFloatAsState(if (focused) 1.1f else 1f, tween(160), label = "iconScale")
     Box(
         modifier = modifier
             .size(size)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(CircleShape)
-            .background(bg)
+            .background(bg, CircleShape)
             .tvInteractive(onSelect = onClick, onFocus = { focused = it }, focusRequester = focusRequester),
         contentAlignment = Alignment.Center,
     ) {
@@ -185,7 +191,7 @@ fun Chip(
         when {
             focused -> Color.White
             selected -> Crimson.Red
-            else -> Crimson.Glass
+            else -> Crimson.ControlFill
         },
         tween(140), label = "chipBg",
     )
@@ -194,8 +200,7 @@ fun Chip(
     Row(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(50))
-            .background(bg)
+            .background(bg, RoundedCornerShape(50))
             .tvInteractive(onSelect = onClick, onFocus = { focused = it; onFocus(it) }, focusRequester = focusRequester)
             .padding(horizontal = 14.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -219,14 +224,13 @@ fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, height: Dp = 3.
         modifier
             .fillMaxWidth()
             .height(height)
-            .clip(RoundedCornerShape(50))
-            .background(track),
+            .background(track, RoundedCornerShape(50)),
     ) {
         Box(
             Modifier
                 .fillMaxWidth(fraction.coerceIn(0f, 1f))
                 .fillMaxHeight()
-                .background(Crimson.Red),
+                .background(Crimson.Red, RoundedCornerShape(50)),
         )
     }
 }
@@ -243,8 +247,7 @@ fun LiveBadge(modifier: Modifier = Modifier, text: String = "LIVE", small: Boole
     )
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Crimson.Red)
+            .background(Crimson.Red, RoundedCornerShape(4.dp))
             .padding(horizontal = if (small) 5.dp else 7.dp, vertical = if (small) 1.dp else 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -252,8 +255,7 @@ fun LiveBadge(modifier: Modifier = Modifier, text: String = "LIVE", small: Boole
             Modifier
                 .size(if (small) 5.dp else 6.dp)
                 .graphicsLayer { alpha = pulse }
-                .clip(CircleShape)
-                .background(Color.White),
+                .background(Color.White, CircleShape),
         )
         Spacer(Modifier.width(if (small) 4.dp else 5.dp))
         Text(
@@ -318,7 +320,7 @@ fun MetaLine(
         extra.filter { it.isNotBlank() }.forEach { part ->
             if (gap()) {
                 Spacer(Modifier.width(10.dp))
-                Box(Modifier.size(3.dp).clip(CircleShape).background(Crimson.TextTertiary))
+                Box(Modifier.size(3.dp).background(Crimson.TextTertiary, CircleShape))
                 Spacer(Modifier.width(10.dp))
             }
             Text(part, style = CrimsonType.Label.copy(color = Crimson.TextSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis)

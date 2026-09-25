@@ -13,12 +13,20 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -30,6 +38,10 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
@@ -52,7 +64,12 @@ import com.crimson.ui.live.DirectoryScreen
 import com.crimson.ui.live.LiveActions
 import com.crimson.ui.live.LiveScreen
 import com.crimson.ui.mylist.MyListScreen
+import com.crimson.ui.player.CaptionLayer
+import com.crimson.ui.player.ThemeSkipNote
+import com.crimson.ui.player.VodControls
 import com.crimson.ui.player.PlayerActions
+import com.crimson.ui.player.PlayerMenu
+import com.crimson.ui.player.PlayerMenuActions
 import com.crimson.ui.player.PlayerOverlay
 import com.crimson.ui.profiles.EditProfileScreen
 import com.crimson.ui.profiles.LoadingScreen
@@ -64,6 +81,7 @@ import com.crimson.ui.settings.SettingsScreen
 import com.crimson.ui.sports.SportsActions
 import com.crimson.ui.sports.SportsScreen
 import com.crimson.ui.theme.Crimson
+import com.crimson.ui.theme.CrimsonType
 import com.crimson.ui.theme.GuideTheme
 import kotlinx.coroutines.delay
 
@@ -92,6 +110,10 @@ private fun CrimsonRoot(onExit: () -> Unit) {
     val playback by vm.playback.collectAsState()
     val banner by vm.banner.collectAsState()
     val spotlight by vm.feed.spotlight.collectAsState()
+    val captionState by vm.captions.state.collectAsState()
+    val themeSkipState by vm.themeSkip.state.collectAsState()
+    val vodControls by vm.vodControls.collectAsState()
+    val cues by vm.cues.collectAsState()
 
     val guideTheme = GuideTheme.Default
     val rootFocus = remember { FocusRequester() }
@@ -107,8 +129,8 @@ private fun CrimsonRoot(onExit: () -> Unit) {
     // Full-screen video and the guide have no focusable content of their own, so the root takes
     // focus there to give remote keys somewhere to land. Every other page focuses its own
     // controls: a D-pad move never descends from a focused ancestor into its children.
-    LaunchedEffect(ui.route) {
-        if (ui.route == Route.Watching || ui.route == Route.Guide) runCatching { rootFocus.requestFocus() }
+    LaunchedEffect(ui.route, ui.playerMenuOpen) {
+        if ((ui.route == Route.Watching && !ui.playerMenuOpen) || ui.route == Route.Guide) runCatching { rootFocus.requestFocus() }
     }
 
     Box(
@@ -213,7 +235,7 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                                     onGuide = { vm.openGuideFor(vm.live.state.value.collection) },
                                     onDirectory = vm::openDirectory,
                                     onFocusChannel = vm.live::focus,
-                                    onOpen = { tile, row -> vm.openTile(tile, row) },
+                                    onOpen = { tile, row -> vm.search.opened(tile.key); vm.openTile(tile, row) },
                                     onRowVisible = vm.live::ensureNowPlaying,
                                 )
                             },
@@ -282,7 +304,7 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                                 onBackspace = vm.search::backspace,
                                 onClear = vm.search::clear,
                                 onScope = vm.search::setScope,
-                                onOpen = { tile, row -> vm.openTile(tile, row) },
+                                onOpen = { tile, row -> vm.search.opened(tile.key); vm.openTile(tile, row) },
                             )
                         },
                     )
@@ -328,11 +350,36 @@ private fun CrimsonRoot(onExit: () -> Unit) {
 
                 Route.Watching -> Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
                     VideoSurface(Modifier.fillMaxSize())
+                    val brightness = ui.settings.videoBrightness / 100f
+                    // Video brightness: a black layer over the picture only. The captions, the
+                    // controls and every menu are drawn above it and keep their own brightness.
+                    if (brightness < 1f) {
+                        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 1f - brightness)))
+                    }
+                    var bannerUp by remember { mutableStateOf(false) }
+                    LaunchedEffect(banner.showToken) {
+                        bannerUp = true
+                        delay(com.crimson.ui.player.BANNER_MS)
+                        bannerUp = false
+                    }
+                    // Captions move up out of the way of whatever is along the bottom.
+                    val raised = if (ui.nowPlaying?.isVod == true) vodControls.visible || playback.isPaused else bannerUp
+                    CaptionLayer(
+                        captions = captionState,
+                        cues = cues,
+                        position = vm::positionMs,
+                        size = ui.settings.captionSize,
+                        background = ui.settings.captionBackground,
+                        raised = raised,
+                        // Dimmed video would leave full-white captions glaring; they dim less.
+                        level = 0.4f + 0.6f * brightness,
+                        besideMenu = ui.playerMenuOpen,
+                    )
                     PlayerOverlay(
                         playback = playback,
                         banner = banner,
                         nowPlaying = ui.nowPlaying,
-                        controlsToken = ui.controlsToken,
+                        vodControls = vodControls,
                         nowMs = guide.nowMs,
                         pendingDigits = ui.pendingChannelNumber,
                         actions = remember(vm) {
@@ -347,9 +394,40 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                                 onRetry = vm::retryPlayback,
                                 position = vm::positionMs,
                                 duration = vm::durationMs,
+                                onMenu = vm::openPlayerMenu,
+                                onPointer = { vm.showVodControls() },
                             )
                         },
+                        captionsOn = captionState.isOn,
                     )
+                    ThemeSkipNote(themeSkipState.skipped)
+                    if (ui.playerMenuOpen) {
+                        PlayerMenu(
+                            captions = captionState,
+                            settings = ui.settings,
+                            isLive = ui.nowPlaying?.isVod != true,
+                            actions = remember(vm) {
+                                PlayerMenuActions(
+                                    onCaptions = vm::toggleCaptions,
+                                    onTryAnother = vm::tryOtherCaptions,
+                                    onNudge = vm::nudgeCaptions,
+                                    onCaptionSize = vm::stepCaptionSize,
+                                    onCaptionBackground = vm::toggleCaptionBackground,
+                                    onDialogueBoost = vm::toggleDialogueBoost,
+                                    onBrightness = vm::stepVideoBrightness,
+                                    onSettings = { vm.closePlayerMenu(); vm.openSettings() },
+                                    onClose = vm::closePlayerMenu,
+                                    onSkipIntro = { vm.toggleThemeSkip(intro = true) },
+                                    onSkipEnding = { vm.toggleThemeSkip(intro = false) },
+                                    onForgetThemes = vm::forgetThemes,
+                                    onSelectAudio = vm::selectAudio,
+                                    onPreferEnglishAudio = vm::togglePreferEnglishAudio,
+                                )
+                            },
+                            audioTracks = playback.audioTracks,
+                            themeSkip = themeSkipState.takeIf { ui.nowPlaying?.kind == com.crimson.ui.NowPlaying.Kind.EPISODE },
+                        )
+                    }
                 }
 
                 Route.Settings -> SettingsScreen(
@@ -364,6 +442,12 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                             onRefreshEpg = vm::refreshEpgNow,
                             onExtraEpgSources = vm::setUseExtraEpgSources,
                             onLivePreviews = vm::setLivePreviews,
+                            onCaptions = vm::setCaptions,
+                            onCaptionSize = vm::stepCaptionSize,
+                            onCaptionBackground = vm::toggleCaptionBackground,
+                            onSoundDescriptions = vm::setCaptionSoundDescriptions,
+                            onDialogueBoost = vm::toggleDialogueBoost,
+                            onBrightness = vm::stepVideoBrightness,
                             onRebuildCatalogue = { vm.importLibrary(force = true) },
                             onSwitchProfile = vm::openProfiles,
                             onEditProfile = { vm.editProfile(vm.ui.value.profile?.id) },
@@ -371,6 +455,57 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                     },
                 )
             }
+        }
+
+        val context = LocalContext.current
+        var crash by remember { mutableStateOf(CrashLog.read(context)) }
+        crash?.let { report ->
+            CrashReport(report, onDismiss = { CrashLog.clear(context); crash = null })
+        }
+    }
+}
+
+/**
+ * The last crash's trace, shown once on the next launch. On a Fire TV this is the only way a
+ * viewer can see (and photograph) what went wrong without a computer.
+ */
+@Composable
+private fun CrashReport(report: String, onDismiss: () -> Unit) {
+    val button = remember { FocusRequester() }
+    com.crimson.ui.components.InitialFocus(button)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Crimson.Background.copy(alpha = 0.96f))
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && (event.key == Key.Back || event.key == Key.Escape)) {
+                    onDismiss(); true
+                } else false
+            }
+            .padding(horizontal = 64.dp, vertical = 40.dp),
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Text("Crimson closed unexpectedly last time", style = CrimsonType.Headline)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "This is what went wrong. A photo of this screen is enough to find the cause.",
+                style = CrimsonType.Body,
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                CrashLog.summary(report),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                style = CrimsonType.Caption.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 14.sp),
+                color = Crimson.TextSecondary,
+                overflow = TextOverflow.Clip,
+            )
+            Spacer(Modifier.height(16.dp))
+            com.crimson.ui.components.CrimsonButton(
+                "Continue",
+                onClick = onDismiss,
+                style = com.crimson.ui.components.ButtonStyle.PRIMARY,
+                focusRequester = button,
+            )
         }
     }
 }
@@ -393,6 +528,10 @@ private fun VideoSurface(modifier: Modifier = Modifier) {
                 resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                 setKeepContentOnPlayerReset(true)
                 setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                // Captions are drawn by CaptionLayer. PlayerView's own subtitle view would draw
+                // the stream's captions a second time underneath (they were seen twice), and its
+                // edge styles include a blurred shadow that Fire OS 5 cannot render.
+                subtitleView?.visibility = android.view.View.GONE
                 player = container.player.exoPlayer
             }
         },
@@ -404,6 +543,8 @@ private fun VideoSurface(modifier: Modifier = Modifier) {
 /** Remote-control routing for the two screens that hold focus themselves. */
 private fun handleKey(event: KeyEvent, route: Route, vm: CrimsonViewModel): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
+    // The captions-and-sound panel takes the keys while it is open.
+    if (route == Route.Watching && vm.ui.value.playerMenuOpen) return false
     val vod = vm.ui.value.nowPlaying?.isVod == true
 
     if ((route == Route.Watching && !vod) || route == Route.Guide) {
@@ -414,28 +555,35 @@ private fun handleKey(event: KeyEvent, route: Route, vm: CrimsonViewModel): Bool
         Route.Watching -> if (vod) {
             val playback = vm.playback.value
             when (event.key) {
-                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                    when {
-                        playback.error != null -> vm.retryPlayback()
-                        playback.isEnded && vm.ui.value.nowPlaying?.next != null -> vm.vodKey(VodKey.NEXT)
-                        else -> vm.vodKey(VodKey.TOGGLE)
-                    }
-                    true
+                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> when {
+                    playback.error != null -> { vm.retryPlayback(); true }
+                    // The next-episode card has the only thing worth pressing.
+                    playback.isEnded && vm.ui.value.nowPlaying?.next != null && !vm.vodControls.value.visible -> vm.vodKey(VodKey.NEXT)
+                    else -> vm.vodControlKey(VodControls.Key.OK)
                 }
+                // The remote's arrows move around the controls, as in any streaming app.
+                Key.DirectionLeft -> vm.vodControlKey(VodControls.Key.LEFT)
+                Key.DirectionRight -> vm.vodControlKey(VodControls.Key.RIGHT)
+                Key.DirectionUp -> vm.vodControlKey(VodControls.Key.UP)
+                Key.DirectionDown -> vm.vodControlKey(VodControls.Key.DOWN)
+                // Back hides the controls first; with none showing it falls through and leaves.
+                Key.Back, Key.Escape -> vm.vodControlKey(VodControls.Key.BACK)
                 Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause, Key.Spacebar -> vm.vodKey(VodKey.TOGGLE)
-                Key.DirectionLeft -> vm.vodKey(VodKey.BACK_10)
-                Key.DirectionRight -> vm.vodKey(VodKey.FORWARD_10)
                 Key.MediaRewind -> vm.vodKey(VodKey.BACK_30)
                 Key.MediaFastForward -> vm.vodKey(VodKey.FORWARD_30)
                 Key.MediaNext -> vm.vodKey(VodKey.NEXT)
-                Key.DirectionUp, Key.DirectionDown, Key.Info, Key.I -> vm.vodKey(VodKey.SHOW)
+                Key.Info, Key.I -> vm.vodKey(VodKey.SHOW)
+                // The remote's menu button is a shortcut to Audio & Subtitles.
+                Key.Menu, Key.C -> { vm.openPlayerMenu(); true }
+                Key.Captions -> { vm.toggleCaptions(); true }
                 else -> false
             }
         } else when (event.key) {
             Key.DirectionUp, Key.ChannelUp -> { vm.channelUp(); true }
             Key.DirectionDown, Key.ChannelDown -> { vm.channelDown(); true }
             Key.DirectionCenter, Key.Enter -> { vm.watchingSelect(); true }
-            Key.Menu -> { vm.openSettings(); true }
+            Key.Menu, Key.C -> { vm.openPlayerMenu(); true }
+            Key.Captions -> { vm.toggleCaptions(); true }
             Key.Info, Key.I, Key.DirectionLeft, Key.DirectionRight -> { vm.showBanner(); true }
             Key.Guide, Key.G -> { vm.openGuideFromWatching(); true }
             Key.F -> { vm.toggleFavoriteSelectedChannel(); true }

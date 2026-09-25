@@ -69,8 +69,11 @@ fun SearchScreen(
 ) {
     val firstKey = remember { FocusRequester() }
     val firstResult = remember { FocusRequester() }
-    val arrivedWithQuery = remember { state.query.isNotBlank() && state.scope == SearchScope.LIVE }
-    if (!arrivedWithQuery) com.crimson.ui.components.InitialFocus(firstKey)
+    // Back from a result: the cursor goes back to the result that was opened.
+    val returning = remember { state.hasQuery && state.openedKey != null && !state.isEmpty }
+    val arrivedWithQuery = remember { !returning && state.query.isNotBlank() && state.scope == SearchScope.LIVE }
+    if (!arrivedWithQuery && !returning) com.crimson.ui.components.InitialFocus(firstKey)
+    if (returning) com.crimson.ui.components.InitialFocus(firstResult)
     // Arriving from a game, the channel showing it is what the viewer came for.
     if (arrivedWithQuery) {
         LaunchedEffect(state.channels.isNotEmpty()) {
@@ -102,7 +105,7 @@ fun SearchScreen(
         Row(Modifier.fillMaxSize().padding(top = 28.dp)) {
             Column(
                 Modifier
-                    .width(300.dp)
+                    .width(330.dp)
                     .fillMaxHeight()
                     .padding(start = Crimson.ScreenPadding, end = 16.dp),
             ) {
@@ -115,6 +118,7 @@ fun SearchScreen(
                     onBackspace = actions.onBackspace,
                     onClear = actions.onClear,
                     firstKeyRequester = firstKey,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             Column(Modifier.weight(1f).fillMaxHeight()) {
@@ -189,6 +193,7 @@ private fun Results(
         val gap = if (live) 16.dp else 14.dp
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
         val cell = (maxWidth - 24.dp - 40.dp - gap * (columns - 1)) / columns
+        val focusKey = state.openedKey?.takeIf { key -> tiles.any { it.key == key } } ?: tiles.first().key
         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
             columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(columns),
             contentPadding = PaddingValues(start = 24.dp, end = 40.dp, top = 16.dp, bottom = 200.dp),
@@ -202,7 +207,7 @@ private fun Results(
                     tile = tile,
                     nowMs = nowMs,
                     onClick = { actions.onOpen(tile, tiles) },
-                    focusRequester = if (index == 0) firstResult else null,
+                    focusRequester = if (tile.key == focusKey) firstResult else null,
                     width = cell,
                 )
             }
@@ -221,7 +226,8 @@ private fun Results(
         }
         return
     }
-    val firstTile = rows.firstOrNull()?.tiles?.firstOrNull()?.key
+    val firstTile = state.openedKey?.takeIf { key -> rows.any { row -> row.tiles.any { it.key == key } } }
+        ?: rows.firstOrNull()?.tiles?.firstOrNull()?.key
     PivotScroll(offset = 24.dp) {
         LazyColumn(contentPadding = PaddingValues(bottom = 240.dp), modifier = Modifier.fillMaxSize()) {
             items(rows, key = { it.id }) { row ->

@@ -13,6 +13,7 @@ class CrimsonApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         container = AppContainer.get(this)
         EpgRefreshWorker.schedule(this, ExistingPeriodicWorkPolicy.KEEP)
     }

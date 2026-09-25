@@ -80,4 +80,34 @@ python tools\make-art.py                                # launcher icon and TV b
 - **Performance**: no blurred shadows on anything that scrolls (removing one took scrolling from
   24 to 18 ms/frame on the emulator), scrims drawn once over a crossfade, not per image. The
   emulator's frame times are a smoke test; a real Fire Stick run has not been done.
-- **Never commit `secrets/`.** Crimson has its own keystore (`crimson-release.jks`).
+- **Fire OS 5 is Android 5.1 (API 22) and is a real target** — the user's Fire TV is a 2nd-gen
+  box (AFTS). The emulator is Android 11 and hides renderer bugs: never use a blurred text shadow
+  unless `BlurredTextShadows` allows it (RenderScript blur segfaults there). Test on the device
+  (`adb connect <ip>:5555`) or the `crimson_tv_28` / API 25 AVDs before calling a UI change done.
+- **`.\gradlew.bat release` verifies the APK** (`verifyReleaseApk`) and fails if it would not
+  parse or install on Fire OS 5; don't hand over an APK that skipped it.
+- **Real-data replay**: `python server.py --snapshot <app database>` serves a real account's
+  channels and catalogue from a device pull (RetroGuide's `debug/real-account-snapshot/`, never
+  committed); `--big` serves a large, messy synthetic catalogue.
+- **Never `Modifier.clip` a rounded shape.** Android's renderer cuts rounded clips without
+  anti-aliasing (jagged corners, worse under the focus zoom). Fill the shape instead
+  (`background(color, shape)`), and round pictures in the bitmap with `RoundedImage`. Logos go
+  through `LogoImage` (smooth downscale).
+- **`tvInteractive` must not be built on its receiver** — it once appended `this.pointerInput`
+  to `this`, doubling every modifier before it (a second focus ring, doubled zoom and fills).
+  Colours were tuned under the doubling; `Crimson.ControlFill` is what "Glass" looked like.
+- **Captions and audio.** `CaptionsController` picks the source (file track → broadcast 608 →
+  OpenSubtitles) and runs automatic sync (`core/subtitles/SubtitleSync`, fed by the speech meter
+  in `TappingAudioSink`). Captions are drawn by `CaptionLayer`, never Media3's SubtitleView
+  (its drop shadow is a blurred text shadow — see Fire OS 5 above). Dialogue boost is
+  `core/audio/DialogueLeveler` in the one player's audio sink; encoded (Dolby) audio is decoded
+  while it or caption sync needs PCM. Test with `make_dialogue.py` + `server.py --captions`.
+- **Film and episode controls are `VodControls`**, a reducer the view model drives from the
+  root's key handler (time bar, then a row of buttons, scrub preview that settles). Don't route
+  VOD keys anywhere else, and keep `PlayerView`'s own subtitle view hidden (it doubled captions).
+- **Theme-song skipping is by ear.** `ThemeSkipController` records chroma (`core/skip/ChromaMeter`,
+  fed by `TappingAudioSink`) and learns each show's themes by comparing episodes
+  (`ThemeLearner`); the intro databases only stand in until then. Test with `make_themes.py` +
+  `server.py --themes` and `-PintroDb=http://10.0.2.2:8080`.
+- **Never commit `secrets/`.** Crimson has its own keystore (`crimson-release.jks`) and, optionally,
+  `opensubtitles.properties`.

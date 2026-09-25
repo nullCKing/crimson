@@ -41,8 +41,20 @@ import com.crimson.ui.live.LiveActions
 import com.crimson.ui.live.LiveCollection
 import com.crimson.ui.live.LiveScreen
 import com.crimson.ui.live.LiveState
+import com.crimson.core.subtitles.SubtitleCue
+import com.crimson.core.subtitles.SubtitleTrack
+import com.crimson.core.subtitles.SyncFix
+import com.crimson.data.settings.AppSettings
+import com.crimson.data.settings.CaptionSize
+import com.crimson.ui.UiState
+import com.crimson.ui.player.CaptionLayer
+import com.crimson.ui.player.CaptionState
 import com.crimson.ui.player.PlayerActions
+import com.crimson.ui.player.PlayerMenu
+import com.crimson.ui.player.PlayerMenuActions
 import com.crimson.ui.player.PlayerOverlay
+import com.crimson.ui.settings.SettingsActions
+import com.crimson.ui.settings.SettingsScreen
 import com.crimson.ui.profiles.EditProfileScreen
 import com.crimson.ui.profiles.ProfilesScreen
 import com.crimson.ui.search.SearchActions
@@ -106,6 +118,16 @@ class CrimsonScreenshotTest {
         away = Competitor(away, away, away.take(3).uppercase(), null, "14", "311d00", "1-1", false, false),
         networks = listOf(net), venue = "Arrowhead Stadium",
     )
+
+    private fun college(id: String, home: String, away: String, awayRank: Int?, homeRank: Int?, division: String, net: String) = SportsEvent(
+        id = id, league = Leagues.NCAAF, startMs = now + 3 * 3_600_000L, name = "$away at $home", shortName = "$away @ $home",
+        state = EventState.UPCOMING, statusText = "3:30 PM",
+        home = Competitor(home, home, home.take(4).uppercase(), null, null, "4e3629", "1-2", true, false, rank = homeRank),
+        away = Competitor(away, away, away.take(4).uppercase(), null, null, "a51c30", "3-0", false, false, rank = awayRank),
+        networks = listOf(net), venue = null, division = division,
+    )
+
+    private val subtitle = SubtitleTrack(listOf(SubtitleCue(0, 60_000, "<i>We should go.</i>\n- Not yet. [thunder rumbles]")))
 
     private val feed = FeedState(
         page = FeedPage.HOME,
@@ -203,6 +225,8 @@ class CrimsonScreenshotTest {
                     game("2", EventState.LIVE, "Eagles", "Cowboys", "FOX"),
                     game("3", EventState.UPCOMING, "Bills", "Lions", "Prime Video"),
                     game("4", EventState.UPCOMING, "49ers", "Rams", "CBS"),
+                    college("5", "Brown", "Harvard", 12, null, "FCS", "ESPN+"),
+                    college("6", "Texas", "Tennessee", 3, 9, "FBS", "ABC"),
                 ),
                 updatedAt = now,
             ),
@@ -222,6 +246,71 @@ class CrimsonScreenshotTest {
     }
 
     @Test
+    fun `captions and sound menu`() = shoot("player_menu") {
+        Box(Modifier.fillMaxSize().background(Color(0xFF2B3440))) {
+            // Brightness at 40%, as the watch screen draws it: a black layer over the video only.
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)))
+            val captions = CaptionState(
+                status = CaptionState.Status.ONLINE, track = subtitle, choice = 0, choices = 7,
+                source = "OpenSubtitles · Severance.S02E04.1080p.WEB.h264",
+                sync = SyncFix(1_400, 1.0, 11.0), detail = "Synced to the dialogue (+1.4 s)",
+            )
+            CaptionLayer(captions, emptyList(), { 5_000L }, CaptionSize.MEDIUM, background = true, raised = false, level = 0.64f, besideMenu = true)
+            PlayerMenu(
+                captions = captions,
+                settings = AppSettings(captions = true, dialogueBoost = true, videoBrightness = 40),
+                isLive = false,
+                actions = PlayerMenuActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+                audioTracks = listOf(
+                    com.crimson.player.AudioOption("0:0", "Japanese · Stereo", "ja", selected = false),
+                    com.crimson.player.AudioOption("1:0", "English · 5.1", "en", selected = true),
+                ),
+                themeSkip = com.crimson.ui.player.ThemeSkipState(
+                    show = "SEVERANCE",
+                    choice = com.crimson.core.skip.ThemeSkipChoice(intro = true, ending = false),
+                    learnedIntros = 1,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `a theme song skipped`() = shoot("theme_skipped") {
+        Box(Modifier.fillMaxSize().background(Color(0xFF2B3440))) {
+            com.crimson.ui.player.ThemeSkipNote(com.crimson.ui.player.ThemeSkipState.Skipped(com.crimson.core.skip.Theme.Kind.INTRO, 1L))
+        }
+    }
+
+    @Test
+    fun `captions over the controls, outlined`() = shoot("captions_outline") {
+        Box(Modifier.fillMaxSize().background(Color(0xFF6A7F8F))) {
+            PlayerOverlay(
+                playback = PlaybackState(isPlaying = false, isPaused = true),
+                banner = BannerState(),
+                nowPlaying = NowPlaying(NowPlaying.Kind.MOVIE, 5, "Heat", "1995 · 2h 50m"),
+                vodControls = com.crimson.ui.player.VodControls(visible = true),
+                nowMs = now,
+                pendingDigits = "",
+                actions = PlayerActions({}, {}, {}, {}, {}, {}, {}, {}, { 1_234_000L }, { 3_000_000L }),
+                captionsOn = true,
+            )
+            CaptionLayer(
+                CaptionState(status = CaptionState.Status.ONLINE, track = subtitle),
+                emptyList(), { 5_000L }, CaptionSize.LARGE, background = false, raised = true, level = 1f,
+            )
+        }
+    }
+
+    @Test
+    fun `captions and sound settings`() = shoot("settings_captions") {
+        SettingsScreen(
+            ui = UiState(settings = AppSettings(captions = true, captionSize = CaptionSize.LARGE, videoBrightness = 30)),
+            actions = SettingsActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
+            initialSection = 4,
+        )
+    }
+
+    @Test
     fun `movie controls`() = shoot("player_vod") {
         Box(Modifier.fillMaxSize().background(Color(0xFF2B3440))) {
             PlayerOverlay(
@@ -231,10 +320,25 @@ class CrimsonScreenshotTest {
                     NowPlaying.Kind.EPISODE, 5, "Severance", "S2:E4 · Woe's Hollow", seriesId = 1, season = 2, episode = 4,
                     next = NextEpisode(6, 2, 5, "Trojan's Horse", null, null),
                 ),
-                controlsToken = 1,
+                vodControls = com.crimson.ui.player.VodControls(visible = true, button = com.crimson.ui.player.VodButton.AUDIO_SUBTITLES),
                 nowMs = now,
                 pendingDigits = "",
                 actions = PlayerActions({}, {}, {}, {}, {}, {}, {}, {}, { 1_234_000L }, { 3_000_000L }),
+            )
+        }
+    }
+
+    @Test
+    fun `moving through an episode`() = shoot("player_scrub") {
+        Box(Modifier.fillMaxSize().background(Color(0xFF2B3440))) {
+            PlayerOverlay(
+                playback = PlaybackState(isPlaying = true),
+                banner = BannerState(),
+                nowPlaying = NowPlaying(NowPlaying.Kind.EPISODE, 5, "Hunter x Hunter", "S1:E12 · Nonstop x Hunter", seriesId = 1, season = 1, episode = 12),
+                vodControls = com.crimson.ui.player.VodControls(visible = true, scrubMs = 812_000L),
+                nowMs = now,
+                pendingDigits = "",
+                actions = PlayerActions({}, {}, {}, {}, {}, {}, {}, {}, { 402_000L }, { 1_420_000L }),
             )
         }
     }

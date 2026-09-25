@@ -1,5 +1,6 @@
 package com.crimson.player
 
+import androidx.media3.common.text.Cue
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -34,15 +35,22 @@ data class PlaybackState(
     val isPaused: Boolean = false,
     /** A film or episode reached its end. */
     val isEnded: Boolean = false,
+    /** The stream's tracks have been read, so [hasSubtitleTrack] means something. */
+    val tracksKnown: Boolean = false,
+    /** The file carries an English or unlabelled subtitle track of its own. */
+    val hasSubtitleTrack: Boolean = false,
+    /** The stream's audio tracks (languages), for the Audio & Subtitles menu. */
+    val audioTracks: List<AudioOption> = emptyList(),
 )
+
+/** One of a stream's audio tracks: "English · 5.1", "Japanese · Stereo". */
+data class AudioOption(val id: String, val label: String, val language: String?, val selected: Boolean)
 
 /**
  * Playback, behind an interface.
  *
- * Captions, subtitles and audio-track selection are explicitly out of scope for this build, but
- * they are the first thing anyone will want next. Keeping the UI talking to this interface rather
- * than to ExoPlayer directly means adding a track selector later is a change to the implementation
- * and one new method here, not a rewrite of the player screen and the guide's preview window.
+ * The UI talks to this rather than to ExoPlayer: the stream's own captions ([cues]) and dialogue
+ * boost are a few methods here, not something every screen reaches into the player for.
  *
  * There is exactly one implementation alive at a time, and it owns exactly one ExoPlayer. That is
  * not an implementation detail: Xtream accounts are sold with a connection limit, commonly one, so
@@ -79,4 +87,31 @@ interface PlayerController {
     fun positionMs(): Long
 
     fun durationMs(): Long
+
+    /** Captions carried in the stream (a subtitle track, or a broadcast's CEA-608), as decoded. */
+    val cues: StateFlow<List<Cue>>
+
+    /** Shows or hides the stream's own captions. */
+    fun setEmbeddedCaptions(enabled: Boolean)
+
+    /** Turns dialogue boost on or off; it fades in within a few milliseconds. */
+    fun setDialogueBoost(enabled: Boolean)
+
+    /** Plays audio track [id] (from [PlaybackState.audioTracks]) for the rest of this title. */
+    fun selectAudio(id: String)
+
+    /**
+     * Whether an English track is chosen when a file has several (a dubbed anime's English dub
+     * rather than the Japanese the file marks as its default).
+     */
+    fun setPreferEnglishAudio(prefer: Boolean)
+
+    /** The player's own volume, 0–1, on top of the TV's; for turning a theme song down while it is being recognised. */
+    fun setVolume(level: Float)
+
+    /** The video's frame rate, once known; for matching downloaded subtitles to it. */
+    fun videoFrameRate(): Double?
+
+    /** The audio path's switches, and its tap for caption sync. */
+    val audio: AudioEffects
 }

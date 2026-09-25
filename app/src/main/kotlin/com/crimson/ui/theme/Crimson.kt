@@ -42,6 +42,14 @@ object Crimson {
     val Glass = Color(0x33FFFFFF)
     val GlassStrong = Color(0x4DFFFFFF)
 
+    /**
+     * The fill of an unfocused button, chip or icon button. These were designed while a bug drew
+     * every control's fill twice (see tvInteractive), so what everyone has been looking at is
+     * Glass laid over itself; these are that, drawn once.
+     */
+    val ControlFill = Color(0x5CFFFFFF)
+    val ControlFillStrong = Color(0x82FFFFFF)
+
     /** Left-to-right fade that lets text sit on a backdrop. */
     val ScrimLeft = Brush.horizontalGradient(
         0f to Background,
