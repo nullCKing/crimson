@@ -16,15 +16,20 @@ import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.crimson.core.player.ReconnectPolicy
+import com.crimson.core.player.StallWatchdog
+import com.crimson.data.xtream.XtreamClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 /**
  * The single ExoPlayer instance, configured for live IPTV on low-end TV hardware.
@@ -43,8 +48,10 @@ import okhttp3.OkHttpClient
  * attached.
  *
  * **A dropped stream should recover by itself.** IPTV streams stall; that is normal, not an error
- * worth a dialog. A failure retries with a widening backoff for [RECONNECT_BUDGET_MS] while the UI
- * shows a small "Reconnecting…" label, and only then gives up with a message and a retry action.
+ * worth a dialog. A failure retries ([ReconnectPolicy]) while the UI shows a small "Reconnecting…"
+ * label, and only then gives up with a message and a retry action. A stream that stops sending
+ * without failing — the common case, and the one that used to look like a channel dying for good —
+ * is noticed by [StallWatchdog] and treated as a failure.
  */
 @OptIn(UnstableApi::class)
 class ExoPlayerController(
@@ -67,6 +74,34 @@ class ExoPlayerController(
     private var reconnectAttempt = 0
     private var reconnectStartedAt = 0L
     private var pendingRetry: Runnable? = null
+    private var bufferingSinceMs = 0L
+
+    private var watchdog = StallWatchdog(StallWatchdog.Limits.LIVE)
+    private val watchdogTick = object : Runnable {
+        override fun run() {
+            checkForStall()
+            handler.postDelayed(this, WATCHDOG_INTERVAL_MS)
+        }
+    }
+
+    /**
+     * Streams get their own HTTP client. The shared one has a 120 s read timeout because it also
+     * downloads 150 MB guide files; on a stream, two minutes of silence is not a slow server, it is
+     * a dead connection. Short timeouts here make a stall surface as an error the loader retries,
+     * and [StallWatchdog] covers whatever still gets through.
+     */
+    private val streamHttp: OkHttpClient = httpClient.newBuilder()
+        .connectTimeout(STREAM_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
+        .readTimeout(STREAM_READ_TIMEOUT_S, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
+        .build()
+
+    /**
+     * Sends the same User-Agent as the Xtream API calls (or the one a playlist asks for). Some
+     * panels limit or drop players they do not recognise; asking for the stream as a different
+     * client from the one that signed in was asking for that.
+     */
+    private val httpFactory = OkHttpDataSource.Factory(streamHttp).setUserAgent(XtreamClient.USER_AGENT)
 
     /**
      * The player itself. Exposed so the Compose surface can bind to it; nothing else should touch
@@ -83,10 +118,7 @@ class ExoPlayerController(
         )
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(
-                DefaultDataSource.Factory(
-                    appContext,
-                    OkHttpDataSource.Factory(httpClient).setUserAgent(USER_AGENT),
-                )
+                DefaultDataSource.Factory(appContext, httpFactory)
             )
         )
         .setLoadControl(
@@ -122,12 +154,22 @@ class ExoPlayerController(
     // ------------------------------------------------------------------ control
 
     override fun play(channel: PlayableChannel) {
-        if (_state.value.channel?.streamId == channel.streamId &&
-            _state.value.channel?.isLive == channel.isLive &&
-            (_state.value.isPlaying || _state.value.isBuffering || _state.value.isPaused)
-        ) {
-            if (_state.value.isPaused) resume()
-            return
+        val current = _state.value
+        if (current.channel?.streamId == channel.streamId && current.channel?.isLive == channel.isLive) {
+            // Choosing the channel that is already on is how a viewer says "this is stuck": a
+            // channel that is reconnecting, has given up, or has been buffering for a while is
+            // started again. One that is playing, or only just tuning, is left alone.
+            val stuck = current.error != null || current.isReconnecting ||
+                (current.isBuffering && bufferingSinceMs > 0 &&
+                    System.currentTimeMillis() - bufferingSinceMs > STUCK_ON_RESELECT_MS)
+            if (stuck) {
+                retry()
+                return
+            }
+            if (current.isPlaying || current.isBuffering || current.isPaused) {
+                if (current.isPaused) resume()
+                return
+            }
         }
         cancelPendingRetry()
         reconnectAttempt = 0
@@ -147,6 +189,14 @@ class ExoPlayerController(
     private fun startStream(channel: PlayableChannel, positionMs: Long = channel.startPositionMs) {
         audio.generation++
         _cues.value = emptyList()
+        httpFactory.setUserAgent(channel.userAgent ?: XtreamClient.USER_AGENT)
+        httpFactory.setDefaultRequestProperties(
+            channel.referrer?.let { mapOf("Referer" to it) } ?: emptyMap()
+        )
+        watchdog = StallWatchdog(if (channel.isLive) StallWatchdog.Limits.LIVE else StallWatchdog.Limits.VOD)
+        bufferingSinceMs = System.currentTimeMillis()
+        handler.removeCallbacks(watchdogTick)
+        handler.postDelayed(watchdogTick, WATCHDOG_INTERVAL_MS)
         // A track chosen by hand was for the last title.
         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
             .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
@@ -301,6 +351,7 @@ class ExoPlayerController(
 
     override fun stop() {
         cancelPendingRetry()
+        handler.removeCallbacks(watchdogTick)
         exoPlayer.stop()
         exoPlayer.clearMediaItems()
         _state.value = PlaybackState()
@@ -308,6 +359,7 @@ class ExoPlayerController(
 
     override fun release() {
         cancelPendingRetry()
+        handler.removeCallbacks(watchdogTick)
         exoPlayer.release()
         _state.value = PlaybackState()
     }
@@ -320,19 +372,53 @@ class ExoPlayerController(
     }
 
     /**
-     * Schedules the next reconnect attempt, or gives up.
-     *
-     * The delay doubles from [RECONNECT_BASE_DELAY_MS], which means about six attempts inside the
-     * thirty-second budget: frequent enough that a brief blip recovers without the viewer noticing,
-     * spaced enough that a genuinely dead stream is not hammered.
+     * Samples the player once a second and reopens a stream that has stalled without failing.
+     * Nothing is checked while a reconnect is already pending or after giving up.
      */
-    private fun scheduleReconnect(reason: String) {
+    private fun checkForStall() {
+        val st = _state.value
+        if (st.channel == null || st.error != null || pendingRetry != null) return
+        val state = when (exoPlayer.playbackState) {
+            Player.STATE_BUFFERING -> StallWatchdog.State.BUFFERING
+            Player.STATE_READY -> StallWatchdog.State.READY
+            else -> StallWatchdog.State.OTHER
+        }
+        val verdict = watchdog.check(
+            StallWatchdog.Sample(
+                nowMs = System.currentTimeMillis(),
+                state = state,
+                playWhenReady = exoPlayer.playWhenReady && !st.isPaused,
+                positionMs = exoPlayer.currentPosition,
+                bufferedPositionMs = exoPlayer.bufferedPosition,
+            )
+        )
+        if (verdict is StallWatchdog.Verdict.Stalled) {
+            Log.w(TAG, "${st.channel.name} stalled (${verdict.reason}); reopening")
+            scheduleReconnect("STALLED", httpStatus = null)
+        }
+    }
+
+    /**
+     * Schedules the next reconnect attempt, or gives up once [ReconnectPolicy] says the budget is
+     * spent.
+     *
+     * The stream is stopped at once rather than when the retry fires: a stalled connection still
+     * holds one of the account's connections, and the provider has to see it close before it will
+     * hand out another.
+     */
+    private fun scheduleReconnect(reason: String, httpStatus: Int?) {
         val channel = _state.value.channel ?: return
         val now = System.currentTimeMillis()
         if (reconnectStartedAt == 0L) reconnectStartedAt = now
+        val policy = ReconnectPolicy(channel.isLive)
+        val resumeAt = if (channel.isLive) 0L else exoPlayer.currentPosition
+        cancelPendingRetry()
+        watchdog.reset()
+        exoPlayer.stop()
 
-        if (now - reconnectStartedAt >= RECONNECT_BUDGET_MS) {
+        if (policy.exhausted(now - reconnectStartedAt)) {
             Log.w(TAG, "giving up on ${channel.name} after ${now - reconnectStartedAt} ms: $reason")
+            handler.removeCallbacks(watchdogTick)
             _state.value = _state.value.copy(
                 isPlaying = false,
                 isBuffering = false,
@@ -342,8 +428,7 @@ class ExoPlayerController(
             return
         }
 
-        val delay = (RECONNECT_BASE_DELAY_MS shl reconnectAttempt.coerceAtMost(5))
-            .coerceAtMost(RECONNECT_MAX_DELAY_MS)
+        val delay = policy.delayMs(reconnectAttempt, httpStatus)
         reconnectAttempt++
         _state.value = _state.value.copy(
             isPlaying = false,
@@ -351,7 +436,6 @@ class ExoPlayerController(
             isReconnecting = true,
             error = null,
         )
-        val resumeAt = if (channel.isLive) 0L else exoPlayer.currentPosition
         val runnable = Runnable {
             pendingRetry = null
             if (_state.value.channel?.streamId == channel.streamId) startStream(channel, resumeAt)
@@ -366,12 +450,15 @@ class ExoPlayerController(
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             when (playbackState) {
-                Player.STATE_BUFFERING ->
+                Player.STATE_BUFFERING -> {
+                    if (!_state.value.isBuffering) bufferingSinceMs = System.currentTimeMillis()
                     _state.value = _state.value.copy(isBuffering = true, isPlaying = false)
+                }
 
                 Player.STATE_READY -> {
                     reconnectAttempt = 0
                     reconnectStartedAt = 0L
+                    bufferingSinceMs = 0L
                     _state.value = _state.value.copy(
                         isBuffering = false,
                         isPlaying = exoPlayer.playWhenReady,
@@ -387,7 +474,7 @@ class ExoPlayerController(
                     } else {
                         // A live stream should never end. When one does, the source went away, so
                         // treat it exactly like an error rather than sitting on a frozen frame.
-                        scheduleReconnect(REASON_ENDED)
+                        scheduleReconnect(REASON_ENDED, httpStatus = null)
                     }
 
                 Player.STATE_IDLE -> Unit
@@ -429,28 +516,48 @@ class ExoPlayerController(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Log.w(TAG, "playback error: ${error.errorCodeName}", error)
-            scheduleReconnect(error.errorCodeName ?: REASON_UNKNOWN)
+            val status = httpStatusOf(error)
+            Log.w(TAG, "playback error: ${error.errorCodeName}" + (status?.let { " (HTTP $it)" } ?: ""), error)
+            scheduleReconnect(error.errorCodeName ?: REASON_UNKNOWN, status)
         }
+    }
+
+    /** The HTTP status behind a load error, when there was one (a refused connection, a 509). */
+    private fun httpStatusOf(error: PlaybackException): Int? {
+        var cause: Throwable? = error.cause
+        while (cause != null) {
+            if (cause is HttpDataSource.InvalidResponseCodeException) return cause.responseCode
+            cause = cause.cause
+        }
+        return null
     }
 
     companion object {
         private const val TAG = "CrimsonPlayer"
-        private const val USER_AGENT = "Crimson/1.0 (AndroidTV)"
 
         /**
-         * Live buffer sizes. Short on purpose: the only thing a large buffer buys on a live
-         * stream is a longer wait after every channel change.
+         * Buffer sizes for live IPTV.
+         *
+         * A live MPEG-TS stream arrives in real time after the server's opening burst, so the
+         * buffer never grows much past what was there when playback started: the start threshold
+         * *is* the cushion the stream has against network jitter for as long as it plays. At
+         * 0.6 s, any hiccup longer than that was a rebuffer. 1.5 s costs up to a second more on a
+         * channel change from a server that does not burst (most Xtream panels do), and each
+         * rebuffer waits for 4 s, so a stream that hiccuped once has a bigger cushion afterwards
+         * instead of rebuffering again on the next one. The maximum only bounds memory (about
+         * 30 MB of 1080p at 30 s).
          */
-        const val MIN_BUFFER_MS = 1_500
-        const val MAX_BUFFER_MS = 6_000
-        const val BUFFER_FOR_PLAYBACK_MS = 600
-        const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 1_200
+        const val MIN_BUFFER_MS = 10_000
+        const val MAX_BUFFER_MS = 30_000
+        const val BUFFER_FOR_PLAYBACK_MS = 1_500
+        const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 4_000
 
-        /** How long to keep retrying a stalled stream before telling the user. */
-        const val RECONNECT_BUDGET_MS = 30_000L
-        const val RECONNECT_BASE_DELAY_MS = 500L
-        const val RECONNECT_MAX_DELAY_MS = 8_000L
+        const val STREAM_CONNECT_TIMEOUT_S = 10L
+        const val STREAM_READ_TIMEOUT_S = 12L
+        const val WATCHDOG_INTERVAL_MS = 1_000L
+
+        /** Re-selecting a channel that has been buffering this long starts it again. */
+        const val STUCK_ON_RESELECT_MS = 3_000L
 
         const val REASON_ENDED = "STREAM_ENDED"
         const val REASON_UNKNOWN = "UNKNOWN"

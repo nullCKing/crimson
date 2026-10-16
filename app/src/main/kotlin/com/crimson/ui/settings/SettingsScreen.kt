@@ -70,6 +70,7 @@ class SettingsActions(
     val onRebuildCatalogue: () -> Unit,
     val onSwitchProfile: () -> Unit,
     val onEditProfile: () -> Unit,
+    val onReloadChannels: () -> Unit,
 )
 
 private enum class Section(val label: String, val icon: ImageVector) {
@@ -155,7 +156,7 @@ private fun ProfileSection(ui: UiState, actions: SettingsActions) {
         }
         SectionTitle("Profile")
         ActionRow("Switch profile", "Go back to Who's watching?", CrimsonIcons.People, actions.onSwitchProfile)
-        ActionRow("Edit this profile", "Name, picture, or the Xtream login it uses", CrimsonIcons.Edit, actions.onEditProfile)
+        ActionRow("Edit this profile", "Name, picture, the Xtream login, or a playlist and guide link", CrimsonIcons.Edit, actions.onEditProfile)
         Text(
             if (ui.profilesEncrypted) "Profiles and their passwords are encrypted on this device."
             else "This device's keystore is unavailable, so profiles are stored unencrypted.",
@@ -169,8 +170,22 @@ private fun ProfileSection(ui: UiState, actions: SettingsActions) {
 private fun LiveSection(ui: UiState, actions: SettingsActions) {
     val rules = ui.settings.rules
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val playlist = ui.profile?.usesPlaylist == true
+        SectionTitle("Channel list")
+        ActionRow(
+            "Reload channels",
+            if (playlist) "Live channels come from your M3U playlist. Reload after changing it."
+            else "Live channels come from your provider's list. Reload to pick up new channels.",
+            CrimsonIcons.Refresh,
+            actions.onReloadChannels,
+        )
+        Spacer(Modifier.height(6.dp))
         SectionTitle("Countries in your lineup")
-        Text("Removing a country is instant. Adding one reads its channels from your provider.", style = CrimsonType.Caption)
+        Text(
+            if (playlist) "These apply to your provider's list only; every channel in your playlist is shown."
+            else "Removing a country is instant. Adding one reads its channels from your provider.",
+            style = CrimsonType.Caption,
+        )
         Country.entries.forEach { country ->
             ToggleRow(
                 label = country.displayName,
@@ -341,8 +356,16 @@ private fun PlaybackSection(ui: UiState, actions: SettingsActions) {
         ToggleRow(
             label = "Use HLS (.m3u8) instead of MPEG-TS (.ts)",
             checked = ui.settings.streamFormat == "m3u8",
-            detail = "Your provider allows: ${ui.allowedFormats.joinToString(", ")}. Try this if live channels stutter.",
+            detail = "Your provider allows: ${ui.allowedFormats.joinToString(", ")}. Try this if live channels keep buffering.",
             onToggle = { actions.onFormat(if (ui.settings.streamFormat == "m3u8") "ts" else "m3u8") },
+        )
+        Text(
+            "MPEG-TS is one continuous download: it starts fast and runs a few seconds behind live, but a " +
+                "network hiccup breaks the whole stream and it has to reconnect. HLS fetches the stream as " +
+                "a series of short files: a hiccup only means fetching one file again, at the cost of running " +
+                "10 to 30 seconds further behind live. Which one is steadier depends on the provider's server, " +
+                "so try each for a day. Applies to playlist channels too when their links are Xtream links.",
+            style = CrimsonType.Caption,
         )
     }
 }

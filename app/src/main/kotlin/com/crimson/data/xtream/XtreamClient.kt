@@ -298,7 +298,8 @@ class XtreamClient(
             .toString()
 
     companion object {
-        private const val USER_AGENT = "IPTVSmartersPro/3.1.5 (AndroidTV)"
+        /** Also what the player sends, so the panel sees one client, not two. */
+        const val USER_AGENT = "IPTVSmartersPro/3.1.5 (AndroidTV)"
         private const val READ_BUFFER = 1 shl 16
 
         /**

@@ -11,6 +11,8 @@ Serves the endpoints the app uses:
     GET /xmltv.php?username=U&password=P                              XMLTV, gzip on request
     GET /live/U/P/STREAM_ID.ts                                        endless MPEG-TS
     GET /live/U/P/STREAM_ID.m3u8                                      sliding-window HLS
+    GET /get.php?username=U&password=P&type=m3u_plus                  M3U playlist (Xtream's own)
+    GET /epg.xml.gz                                                   the playlist's guide
     GET /_truth                                                       ground truth, for tests only
 
 Standard library only, so it runs anywhere Python 3.8 does — including the Windows machine that
@@ -25,6 +27,11 @@ to well-known public test streams (see README).
 Usage:
     python3 server.py --port 8080
     python3 server.py --port 8080 --channels 5200 --epg-days 3
+    python3 server.py --stall-after 40     # .ts streams go silent after 40 s, socket left open
+
+The playlist from get.php is what a curated playlist service like EPGenius hands out: the same
+streams, with `tvg-id`s that exist only in its own guide (/epg.xml.gz), so a guide shown on a
+channel came from the playlist's guide. Its programme titles start with "PL ·" to make that visible.
 """
 
 import argparse
@@ -33,6 +40,7 @@ import gzip
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -225,6 +233,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_api(params)
             elif parsed.path == "/xmltv.php":
                 self.handle_xmltv(params)
+            elif parsed.path == "/get.php":
+                self.handle_playlist(params)
+            elif parsed.path == "/epg.xml.gz":
+                self.handle_playlist_guide()
             elif parsed.path.startswith("/movie/") or parsed.path.startswith("/series/"):
                 self.handle_film(parsed.path)
             elif parsed.path.startswith("/subtitles/"):
@@ -353,6 +365,37 @@ class Handler(BaseHTTPRequestHandler):
             for chunk in chunks:
                 write_chunk(chunk)
         self.wfile.write(b"0\r\n\r\n")
+
+    def handle_playlist(self, params):
+        """Xtream's own M3U endpoint, with playlist-only guide ids and a url-tvg header."""
+        if not self._authorised(params):
+            self._text("unauthorised\n", 401)
+            return
+        host = self.headers.get("Host", "127.0.0.1:%d" % _args.port)
+        names = {c["category_id"]: c.get("category_name", "") for c in _catalog.categories}
+        out = ['#EXTM3U url-tvg="http://%s/epg.xml.gz"' % host]
+        for c in _catalog.channels:
+            tvg_id = ("pl-" + c["epg_channel_id"]) if c["epg_channel_id"] else ""
+            out.append('#EXTINF:-1 tvg-id="%s" tvg-name="%s" tvg-logo="%s" group-title="%s",%s' % (
+                tvg_id, c["name"], c["stream_icon"] or "", names.get(c["category_id"], ""), c["name"]))
+            out.append("http://%s/live/%s/%s/%d.ts" % (host, USERNAME, PASSWORD, c["stream_id"]))
+        self._text("\n".join(out) + "\n", content_type="audio/x-mpegurl")
+
+    def handle_playlist_guide(self):
+        """The playlist's guide: the provider's listings under the playlist's ids, gzipped."""
+        renamed = [dict(c, epg_channel_id="pl-" + c["epg_channel_id"], name="PL " + c["name"])
+                   for c in _catalog.channels if c["epg_channel_id"]]
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+            for chunk in epg_mod.stream_xmltv(renamed, days_back=_args.epg_days_back,
+                                              days_forward=_args.epg_days):
+                gz.write(re.sub(rb"(<title[^>]*>)", "\\1PL \u00b7 ".encode("utf-8"), chunk))
+        body = buf.getvalue()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/gzip")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def handle_film(self, path):
         """A film or an episode: the same finite MP4, with byte ranges so the player can seek."""
@@ -527,6 +570,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
         deadline = time.time()
+        started = time.time()
         try:
             while True:
                 with open(loop, "rb") as fh:
@@ -534,6 +578,12 @@ class Handler(BaseHTTPRequestHandler):
                         block = fh.read(bytes_per_second)
                         if not block:
                             break
+                        if _args.stall_after and time.time() - started > _args.stall_after:
+                            # What an overloaded panel does: stop sending, keep the socket open.
+                            # A player that waits on its read timeout sits here for minutes.
+                            print("stalling a .ts stream after %d s" % _args.stall_after, flush=True)
+                            time.sleep(600)
+                            return
                         self.wfile.write(block)
                         deadline += 1.0
                         sleep = deadline - time.time()
@@ -605,6 +655,8 @@ def main():
                         help="serve media/dual.mkv (Japanese default + English) as every film")
     parser.add_argument("--themes", action="store_true",
                         help="serve the theme-skip test episodes (make_themes.py) as every show's episodes")
+    parser.add_argument("--stall-after", type=int, default=0, metavar="SECONDS",
+                        help="make every .ts stream stop sending (socket left open) after this long")
     parser.add_argument("--verbose", action="store_true")
     _args = parser.parse_args()
 

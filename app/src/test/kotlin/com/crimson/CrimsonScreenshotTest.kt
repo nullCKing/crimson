@@ -156,7 +156,7 @@ class CrimsonScreenshotTest {
 
     @Test
     fun `first profile`() = shoot("profile_edit") {
-        EditProfileScreen(null, isFirst = true, saving = false, error = null, encrypted = true, onSave = { _, _, _, _, _ -> }, onCancel = {}, onDelete = null)
+        EditProfileScreen(null, isFirst = true, saving = false, error = null, encrypted = true, onSave = { _, _, _, _, _, _, _ -> }, onCancel = {}, onDelete = null)
     }
 
     @Test
@@ -305,7 +305,7 @@ class CrimsonScreenshotTest {
     fun `captions and sound settings`() = shoot("settings_captions") {
         SettingsScreen(
             ui = UiState(settings = AppSettings(captions = true, captionSize = CaptionSize.LARGE, videoBrightness = 30)),
-            actions = SettingsActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = SettingsActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
             initialSection = 4,
         )
     }

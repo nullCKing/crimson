@@ -45,8 +45,8 @@ android {
         // minSdk 21 supports Fire OS 5+ (Android 5.0+) and up, covering older Fire Sticks as well as newer models.
         minSdk = 21
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "OPENSUBTITLES_API_KEY", subtitleSecret("apiKey"))
         buildConfigField("String", "OPENSUBTITLES_USERNAME", subtitleSecret("username"))

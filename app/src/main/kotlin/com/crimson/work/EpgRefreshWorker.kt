@@ -47,9 +47,11 @@ class EpgRefreshWorker(
                 if (current.useExtraEpgSources)
                     EpgSources.forCountries(current.rules.countries.map { it.code }.toSet())
                 else emptyList()
+            val profile = container.profiles.byId(session.profile.id) ?: session.profile
             val done = importer.import(
                 manualOffsetHours = current.epgOffsetHours,
                 extraSources = extras,
+                primarySources = EpgSources.primary(profile.epgUrl),
             ).last()
             if (done is EpgProgress.Done) {
                 Log.i(TAG, "guide refreshed: kept ${done.kept} of ${done.seen} programmes")

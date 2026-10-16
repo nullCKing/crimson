@@ -68,7 +68,9 @@ class EpgFeedClient(private val http: OkHttpClient = defaultClient()) {
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
-            .callTimeout(10, TimeUnit.MINUTES)
+            // A curated guide such as EPGenius's is 175 MB of XML once unzipped, parsed while it
+            // downloads; on a 2nd-generation Fire TV that can take several minutes.
+            .callTimeout(30, TimeUnit.MINUTES)
             .retryOnConnectionFailure(true)
             .build()
     }

@@ -18,6 +18,10 @@ data class PlayableChannel(
     val isLive: Boolean = true,
     /** Where to start a film or episode, for resume. Ignored for live. */
     val startPositionMs: Long = 0L,
+    /** A User-Agent the channel's playlist asks for; otherwise the app's usual one. */
+    val userAgent: String? = null,
+    /** A Referer the channel's playlist asks for. */
+    val referrer: String? = null,
 )
 
 /** What the UI needs to know about playback. */

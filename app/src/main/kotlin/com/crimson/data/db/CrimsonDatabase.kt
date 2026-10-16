@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
@@ -19,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MyListEntity::class,
         WatchProgressEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class CrimsonDatabase : RoomDatabase() {
@@ -34,6 +35,14 @@ abstract class CrimsonDatabase : RoomDatabase() {
 
     companion object {
         private val open = HashMap<String, CrimsonDatabase>()
+
+        /** 1 → 2: channels from an M3U playlist carry their own URL and User-Agent. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE channels ADD COLUMN streamUrl TEXT")
+                db.execSQL("ALTER TABLE channels ADD COLUMN userAgent TEXT")
+            }
+        }
 
         private fun fileName(profileId: String) = "crimson_$profileId.db"
 
@@ -60,6 +69,9 @@ abstract class CrimsonDatabase : RoomDatabase() {
                 // The database is a cache of the provider's data, rebuildable by re-importing.
                 // On a schema change, throwing it away and re-importing is both simpler and
                 // safer than migrating a table the user has no unique data in.
+                // That was true until My List and resume points lived here too, so a change that
+                // only adds columns is migrated rather than wiping them.
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration()
                 // Write-ahead logging keeps the guide readable while the EPG refresh is writing,
                 // which is the spec's "must stay usable during a refresh". Set here rather than

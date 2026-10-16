@@ -19,6 +19,7 @@ import com.crimson.core.guide.TimeWindow
 import com.crimson.core.model.Country
 import com.crimson.core.model.FilterRules
 import com.crimson.core.model.Market
+import com.crimson.core.playlist.XtreamUrl
 import com.crimson.core.sports.BroadcastSearch
 import com.crimson.data.db.CategoryEntity
 import com.crimson.data.db.MyListEntity
@@ -315,7 +316,16 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     // ================================================================== profiles
 
-    fun saveProfile(existingId: String?, name: String, avatar: Int, server: String, username: String, password: String) {
+    fun saveProfile(
+        existingId: String?,
+        name: String,
+        avatar: Int,
+        server: String,
+        username: String,
+        password: String,
+        playlistUrl: String = "",
+        epgUrl: String = "",
+    ) {
         if (_ui.value.isSavingProfile) return
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) {
@@ -324,6 +334,12 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (server.isBlank() || username.isBlank()) {
             _ui.value = _ui.value.copy(profileError = "Enter the Xtream server address and username.")
+            return
+        }
+        val playlist = playlistUrl.trim()
+        val guide = epgUrl.trim()
+        if (listOf(playlist, guide).any { it.isNotEmpty() && !it.startsWith("http://", true) && !it.startsWith("https://", true) }) {
+            _ui.value = _ui.value.copy(profileError = "Playlist and guide links start with http:// or https://.")
             return
         }
         _ui.value = _ui.value.copy(isSavingProfile = true, profileError = null)
@@ -337,6 +353,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 username = username.trim(),
                 password = password,
                 createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                playlistUrl = playlist,
+                epgUrl = guide,
             )
             val result = withContext(Dispatchers.IO) {
                 runCatching { XtreamClient(profile.account, container.httpClient).login() }
@@ -346,7 +364,11 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                     container.profiles.save(profile)
                     val credentialsChanged = existing != null &&
                         (existing.serverUrl != profile.serverUrl || existing.username != profile.username || existing.password != profile.password)
-                    if (credentialsChanged && _ui.value.profile?.id == profile.id) endSession()
+                    val sourcesChanged = existing != null &&
+                        (existing.playlistUrl != profile.playlistUrl || existing.epgUrl != profile.epgUrl)
+                    // A new playlist or guide means a new channel list: read it on the next sign-in.
+                    if (credentialsChanged || sourcesChanged) container.settingsFor(profile.id).setImportCompleted(false)
+                    if ((credentialsChanged || sourcesChanged) && _ui.value.profile?.id == profile.id) endSession()
                     // The provider's preferred format, remembered for the first session.
                     pendingFormat = profile.id to info.preferredFormat
                     _ui.value = _ui.value.copy(
@@ -468,6 +490,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         is XtreamError.Expired -> "This account has expired."
         is XtreamError.Unreachable -> "Could not reach the server. Check the address and your connection."
         is XtreamError.NotXtream -> "That address did not answer like an Xtream panel."
+        is com.crimson.data.playlist.PlaylistException -> error.message ?: "The playlist could not be read."
         else -> error.message ?: "Something went wrong signing in."
     }
 
@@ -475,23 +498,29 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
 
     fun runImport(fullRefresh: Boolean) {
         val importer = container.channelImporter() ?: return
+        val playlist = container.currentProfile()?.playlistUrl?.takeIf { it.isNotBlank() }
+        val reading = if (playlist != null) "Reading your playlist…" else "Reading your channels…"
         importJob?.cancel()
-        _ui.value = _ui.value.copy(importMessage = "Reading your channels…", importDetail = null)
+        _ui.value = _ui.value.copy(importMessage = reading, importDetail = null)
         setRoot(Route.Loading)
         importJob = sessionScope.launch {
             val rules = container.settings.settings.first().rules
             runCatching {
-                importer.import(rules, onlyNewCategories = !fullRefresh).collect { progress ->
+                val channels = if (playlist != null) container.playlistImporter()!!.import(playlist)
+                    else importer.import(rules, onlyNewCategories = !fullRefresh)
+                channels.collect { progress ->
                     when (progress) {
                         is ImportProgress.ReadingCategories ->
-                            _ui.value = _ui.value.copy(importMessage = "Reading your channels…")
+                            _ui.value = _ui.value.copy(importMessage = reading)
                         is ImportProgress.Scanning ->
                             _ui.value = _ui.value.copy(
                                 importMessage = "Found ${progress.kept} channels",
                                 importDetail = "${progress.seen} checked · ${progress.category}",
                             )
-                        is ImportProgress.Done ->
+                        is ImportProgress.Done -> {
                             _ui.value = _ui.value.copy(importMessage = "Found ${progress.kept} channels", importDetail = null)
+                            rememberPlaylistGuide(progress.guideUrls)
+                        }
                     }
                 }
             }.onFailure { error ->
@@ -507,11 +536,17 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             // Guide data next; nothing on screen waits for it.
             runCatching {
                 val settings = container.settings.settings.first()
+                _ui.value = _ui.value.copy(isRefreshingEpg = true)
                 container.xmltvImporter()?.import(
                     manualOffsetHours = settings.epgOffsetHours,
                     extraSources = extraSourcesFor(settings),
+                    primarySources = primaryGuides(),
                 )?.collect { progress ->
-                    if (progress is EpgProgress.Done) container.settings.setEpgSummary(progress.report.summary())
+                    when (progress) {
+                        is EpgProgress.Source -> _ui.value = _ui.value.copy(epgRefreshDetail = progress.label)
+                        is EpgProgress.Done -> container.settings.setEpgSummary(progress.report.summary())
+                        else -> Unit
+                    }
                 }
                 container.settings.setEpgRefreshedAt(System.currentTimeMillis())
                 container.settings.setImportCompleted(true)
@@ -520,6 +555,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 container.settings.setEpgSummary("Guide download failed: ${it.message ?: it.javaClass.simpleName}")
                 container.settings.setImportCompleted(true)
             }
+            _ui.value = _ui.value.copy(isRefreshingEpg = false, epgRefreshDetail = null)
             refreshWindow()
             live.rebuild()
 
@@ -528,6 +564,22 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             importLibrary()
         }
     }
+
+    /**
+     * A playlist that names its own guide (`url-tvg`) when the profile has none: the link is kept
+     * on the profile, where the viewer can see it and change it.
+     */
+    private fun rememberPlaylistGuide(urls: List<String>) {
+        if (urls.isEmpty()) return
+        val profile = container.currentProfile() ?: return
+        if (profile.epgUrl.isNotBlank()) return
+        val updated = profile.copy(epgUrl = urls.joinToString(","))
+        container.profiles.save(updated)
+        if (_ui.value.profile?.id == updated.id) _ui.value = _ui.value.copy(profile = updated)
+    }
+
+    /** The profile's own guide links, read before the provider's guide. */
+    private fun primaryGuides() = EpgSources.primary(container.currentProfile()?.epgUrl.orEmpty())
 
     private fun extraSourcesFor(settings: AppSettings) =
         if (!settings.useExtraEpgSources) emptyList()
@@ -542,6 +594,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 container.xmltvImporter()?.import(
                     manualOffsetHours = settings.epgOffsetHours,
                     extraSources = extraSourcesFor(settings),
+                    primarySources = primaryGuides(),
                 )?.collect { progress ->
                     when (progress) {
                         is EpgProgress.Source -> _ui.value = _ui.value.copy(epgRefreshDetail = progress.label)
@@ -824,12 +877,18 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             val settings = container.settings.settings.first()
             val client = container.client ?: return@launch
             themeSkip.stop()
+            // A playlist channel plays its own URL (switched to HLS or MPEG-TS like any other
+            // when it is an Xtream one); the provider's channels are built from the stream id.
+            val row = withContext(Dispatchers.IO) { container.database.channelDao().byStreamId(channel.streamId) }
+            val url = row?.streamUrl?.let { XtreamUrl.withFormat(it, settings.streamFormat) }
+                ?: client.streamUrl(channel.streamId, settings.streamFormat)
             container.player.play(
                 PlayableChannel(
                     streamId = channel.streamId,
                     number = channel.number,
                     name = channel.name,
-                    url = client.streamUrl(channel.streamId, settings.streamFormat),
+                    url = url,
+                    userAgent = row?.userAgent,
                 )
             )
             if (!remember) return@launch
@@ -1345,7 +1404,9 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             container.settings.setUseExtraEpgSources(use)
             if (!use) {
                 withContext(Dispatchers.IO) {
-                    container.database.programDao().deleteSourcesOtherThan(listOf(XmltvImporter.PROVIDER_ID, ShortEpgFetcher.SHORT_EPG_ID))
+                    container.database.programDao().deleteSourcesOtherThan(
+                        listOf(XmltvImporter.PROVIDER_ID, ShortEpgFetcher.SHORT_EPG_ID) + EpgSources.PRIMARY_IDS
+                    )
                 }
                 refreshWindow()
             } else {
@@ -1454,7 +1515,12 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         sessionScope.launch { container.settings.setVideoBrightness(next) }
     }
 
+    /** Reads the channel list again: the playlist's, or the provider's. */
+    fun reloadChannels() = runImport(fullRefresh = true)
+
     private fun fetchNewCategories() {
+        // A playlist is the whole lineup; a country added in Settings has nothing to fetch.
+        if (container.currentProfile()?.usesPlaylist == true) return
         val importer = container.channelImporter() ?: return
         _ui.value = _ui.value.copy(isFetchingMore = true)
         sessionScope.launch {

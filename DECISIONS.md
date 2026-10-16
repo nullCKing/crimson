@@ -3,6 +3,86 @@
 Every non-obvious choice, with the reason. Crimson's decisions come first; RetroGuide's follow,
 newest last, and still govern the engine Crimson inherited.
 
+## Crimson 1.4 (2026-10-16)
+
+### Streams that buffer once and never come back
+
+Reported as: a channel plays fine, buffers once, and is dead from then on; and frequent short
+buffering that clears by itself. Found in the code (not reproduced on the user's Fire TV, which
+was not reachable):
+
+- **The player shared the Xtream client's 120 s read timeout.** That timeout exists for 150 MB
+  guide downloads. An IPTV server that stops sending but keeps the socket open (what an overloaded
+  or restarting panel does) never fails a read, so ExoPlayer sat in "buffering" for two minutes
+  per attempt, and its loader retries a failed progressive load several times before reporting
+  it. Then the old 30 s reconnect budget, counted from the first error, was already spent, so the
+  first retry that did not come up at once ended in the error screen. That is "dies for good".
+  Streams now have their own client (10 s connect, 12 s read).
+- **A watchdog** (`core/player/StallWatchdog`, sampled every second) reopens a live stream after
+  8 s with no new data, 20 s of continuous buffering, or 6 s of a picture that does not move
+  while the player says it is playing (a decoder or audio clock stopped after a timestamp jump).
+  Films and episodes get 15/45/10 s. Pausing never counts.
+- **Reconnects** (`ReconnectPolicy`): 0.3, 1, 2, 3 s, then every 5 s, for two minutes on live (one
+  on films), instead of a doubling backoff for 30 s. The stream is stopped as soon as the stall is
+  seen, not when the retry fires, so the provider sees the old connection close before the new
+  one arrives: on a one-connection account, a retry while the stalled socket is still open is
+  refused. Refusals that mean "too many connections" (HTTP 403, 429, 458, 509) wait at least 6 s.
+  This supersedes RetroGuide's "Reconnect budget of 30 seconds" below.
+- **Selecting the channel that is already on restarts it** when it is reconnecting, has given
+  up, or has been buffering for more than 3 s. It used to do nothing, so the obvious thing a
+  viewer tries had no effect.
+- **The player sends the API client's User-Agent** (`IPTVSmartersPro/3.1.5`). The API calls already
+  did; streams went out as `Crimson/1.0`. Some panels throttle or drop clients they do not
+  recognise, and asking for streams as a different client from the one that signed in invites it.
+  A playlist entry's `#EXTVLCOPT:http-user-agent` overrides it for that channel.
+- **Live buffering starts at 1.5 s instead of 0.6 s, and at 4 s after a rebuffer.** A live TS
+  stream arrives in real time after the server's opening burst, so the buffer never grows past
+  what it had when playback started: the start threshold is the cushion against jitter for the
+  whole session. 0.6 s meant any hiccup longer than that was a visible rebuffer. Cost: up to about
+  a second more per channel change on a server that does not burst. The maximum (30 s) only bounds
+  memory. These are constants, not a setting: ExoPlayer's load control is fixed when the player is
+  built, and the player is built once.
+- **HLS or MPEG-TS stays the viewer's choice** (Settings → Playback), now with an explanation:
+  TS is one long download that a hiccup breaks; HLS is short files that a hiccup only delays, at
+  10–30 s more delay behind live. Which is steadier is a property of the provider's server.
+
+### M3U playlists and guide links (EPGenius)
+
+- **A playlist and a guide link are part of a profile, beside the Xtream login, not instead of
+  it.** EPGenius's playlists are generated from the viewer's Xtream account and point at the same
+  servers, so the login is still there, and it is what Movies, TV Shows, Browse by Country and the
+  short-EPG fallback need. "Use the M3U option, not the Xtream option" is advice for players that
+  can do only one of the two.
+- **The playlist replaces the provider's channel list** (`PlaylistImporter`): names, groups and
+  order are the curator's, and the country filter does not apply (the playlist is the lineup the
+  viewer chose; the filter queries keep any row with a `streamUrl`). Numbers are the playlist's
+  `tvg-chno` when free, else playlist order from 1. Only live entries are kept.
+- **Stream ids come from the URL** when it is an Xtream URL (`/live/u/p/123.ts`, `/u/p/123`), so
+  favourites, the last channel and the short-EPG fallback keep working; otherwise a negative
+  FNV-1a hash of the URL, which cannot collide with a provider id.
+- **Downloaded to a file, then written in one transaction.** A link that fails or answers with a
+  web page (Google Drive's "can't scan for viruses" page, unless the link has `confirm=t`) leaves
+  the current list untouched, and the error names what came back.
+- **Each channel stores its URL** (`channels.streamUrl`, `userAgent`). Room migration 1 → 2 adds
+  the two columns. This is the first real migration: the destructive fallback is still there for
+  anything without one, but My List and resume points live in this database now and an
+  `ALTER TABLE ... ADD COLUMN` is cheap.
+- **The stream-format setting applies to playlist channels** whose links are Xtream links
+  (`XtreamUrl.withFormat`); other links play as given.
+- **The guide link is read first and wins.** Its ids were made to match the playlist's `tvg-id`s,
+  so where it has a channel it is right about it. Its rows are written with REPLACE, other
+  sources' rows for the channels it filled are deleted (an earlier refresh's provider listings
+  would otherwise sit between its programmes), and the provider and public feeds are only shown
+  the channels it left. Tagged `playlist` (`playlist2`, `playlist3` for comma-separated extra links),
+  and kept when the public feeds are switched off.
+- **A playlist's own `url-tvg` fills an empty guide field**, saved on the profile where it can be
+  seen and changed.
+- **EPGenius's guide is big**: `epg6.xml.gz` is 22 MB, 175 MB of XML, 15,376 channels and 602,264
+  programmes over ten days (checked 2026-10-16). It goes through the same pull parser as the
+  provider's guide, so only programmes for channels in the playlist, inside the 2 h back / 72 h
+  ahead window, are kept. The feed client's call timeout went from 10 to 30 minutes, because the
+  parse runs while the download does and a 2nd-generation Fire TV is slow at it.
+
 ## Crimson 1.3 (2026-09-25)
 
 - **Player controls work like Netflix's and Prime's** (`VodControls`), asked for after Down

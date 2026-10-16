@@ -67,12 +67,23 @@ data class EpgReport(
     val problem: String? = null,
     /** What each public feed added, after the provider's own data. */
     val sources: List<SourceResult> = emptyList(),
+    /** What the viewer's own guide URL(s) added, read before the provider. */
+    val primary: List<SourceResult> = emptyList(),
 ) {
     /** Channels the public feeds filled that the provider had nothing for. */
     val extraChannelsFilled: Int get() = sources.sumOf { it.channelsFilled }
 
     /** One line for the Settings screen. */
-    fun summary(): String = when {
+    fun summary(): String {
+        if (primary.isEmpty()) return providerSummary()
+        val lead = primary.joinToString(" ") { p ->
+            p.problem?.let { "Your guide failed: $it." }
+                ?: "Your guide: ${p.programmesKept} programmes for ${p.channelsFilled} channels."
+        }
+        return "$lead ${providerSummary()}"
+    }
+
+    private fun providerSummary(): String = when {
         problem != null -> problem
         xmltvChannels == 0 && programmesSeen == 0 -> "The provider's guide was empty."
         programmesKept == 0 && droppedUnknownChannel > 0 ->
@@ -98,7 +109,7 @@ data class EpgReport(
             "outsideWindow=$droppedOutsideWindow badTime=$droppedBadTime" +
             (if (sampleUnmatchedIds.isNotEmpty()) " unmatchedIds=$sampleUnmatchedIds" else "") +
             (problem?.let { " problem=$it" } ?: "") +
-            sources.joinToString("") {
+            (primary + sources).joinToString("") {
                 " [${it.id} filled=${it.channelsFilled} kept=${it.programmesKept}" +
                     (it.problem?.let { p -> " problem=$p" } ?: "") + "]"
             }
@@ -135,13 +146,20 @@ class XmltvImporter(
 ) {
 
     /**
-     * Runs the whole import. [extraSources] are the public feeds to try after the provider's own
-     * data; pass an empty list to use the provider alone.
+     * Runs the whole import. [primarySources] are the viewer's own guide URLs (the EPG link that
+     * comes with a curated playlist), read before anything else; [extraSources] are the public
+     * feeds to try after the provider's own data. Pass empty lists to use the provider alone.
+     *
+     * A primary guide is trusted over the provider: its ids were made to match the playlist's
+     * `tvg-id`s, so where it has a channel it is right about it by construction. It therefore
+     * overwrites what is stored for the channels it covers, and the provider and the public feeds
+     * only see what it left.
      */
     fun import(
         manualOffsetHours: Int = 0,
         now: Long = System.currentTimeMillis(),
         extraSources: List<EpgSource> = emptyList(),
+        primarySources: List<EpgSource> = emptyList(),
     ): Flow<EpgProgress> =
         flow {
             emit(EpgProgress.Downloading)
@@ -156,16 +174,58 @@ class XmltvImporter(
             val to = now + FUTURE_WINDOW_MS
             val offsetMinutes = manualOffsetHours * 60
 
+            // ---------------------------------------------------------- the viewer's own guide
+            val filledByPrimary = HashSet<String>()
+            val primaryResults = ArrayList<SourceResult>(primarySources.size)
+            primarySources.forEachIndexed { i, source ->
+                emit(EpgProgress.Source(source.label, i + 1, primarySources.size))
+                val sourceStats = Stats()
+                val filledHere = HashSet<String>()
+                val failure = runCatching {
+                    readOneSource(
+                        sourceId = source.id,
+                        open = { sniff(feeds.open(source), sourceStats, source.label) },
+                        index = ChannelIndex.of(
+                            allChannels.filter { it.channelKey !in filledByPrimary },
+                            includeProviderIds = false,
+                        ),
+                        from = from,
+                        to = to,
+                        offsetMinutes = offsetMinutes,
+                        stats = sourceStats,
+                        onChannelMatched = { _, _ -> },
+                        onFilled = filledHere::add,
+                        replace = true,
+                    )
+                }.exceptionOrNull()
+                if (failure != null) Log.w(TAG, "${source.label} failed", failure)
+                // What the provider or a public feed stored for these channels on an earlier
+                // refresh would otherwise sit between this guide's programmes.
+                filledHere.chunked(KEY_CHUNK).forEach { db.programDao().deleteOtherSourcesBlocking(it, source.id) }
+                filledByPrimary.addAll(filledHere)
+                primaryResults.add(
+                    SourceResult(
+                        id = source.id,
+                        label = source.label,
+                        channelsFilled = filledHere.size,
+                        programmesKept = sourceStats.kept,
+                        problem = failure?.let { it.message ?: it.javaClass.simpleName } ?: sourceStats.problem,
+                    )
+                )
+            }
+            val forProvider = if (filledByPrimary.isEmpty()) allChannels
+                else allChannels.filter { it.channelKey !in filledByPrimary }
+
             // ---------------------------------------------------------- the provider
             val stats = Stats()
             val matchedById = HashSet<String>()
             val matchedByName = HashSet<String>()
             val filledByProvider = HashSet<String>()
 
-            readOneSource(
+            if (forProvider.isNotEmpty()) readOneSource(
                 sourceId = PROVIDER_ID,
                 open = { sniff(client.openXmltv(), stats) },
-                index = ChannelIndex.of(allChannels, includeProviderIds = true),
+                index = ChannelIndex.of(forProvider, includeProviderIds = true),
                 from = from,
                 to = to,
                 offsetMinutes = offsetMinutes,
@@ -183,7 +243,7 @@ class XmltvImporter(
             // Event slots and 24/7 loops are skipped: their name is their listing, no feed
             // carries them, and leaving them in would make every feed parse against thousands of
             // names that can never match.
-            var remaining = allChannels.filter {
+            var remaining = forProvider.filter {
                 it.channelKey !in filledByProvider &&
                     !EventChannelEpg.isSynthetic(it.originalName, it.categoryName)
             }
@@ -231,7 +291,7 @@ class XmltvImporter(
                 xmltvChannels = stats.xmltvChannels,
                 matchedById = matchedById.size,
                 matchedByName = matchedByName.size,
-                unmatchedChannels = (allChannels.size - matchedById.size - matchedByName.size -
+                unmatchedChannels = (allChannels.size - filledByPrimary.size - matchedById.size - matchedByName.size -
                     sourceResults.sumOf { it.channelsFilled }).coerceAtLeast(0),
                 programmesSeen = stats.seen,
                 programmesKept = stats.kept,
@@ -241,9 +301,16 @@ class XmltvImporter(
                 sampleUnmatchedIds = stats.sampleUnmatched.toList(),
                 problem = stats.problem,
                 sources = sourceResults,
+                primary = primaryResults,
             )
             Log.i(TAG, "xmltv import: ${report.detail()}")
-            emit(EpgProgress.Done(stats.kept + sourceResults.sumOf { it.programmesKept }, stats.seen, report))
+            emit(
+                EpgProgress.Done(
+                    stats.kept + sourceResults.sumOf { it.programmesKept } + primaryResults.sumOf { it.programmesKept },
+                    stats.seen,
+                    report,
+                )
+            )
         }.flowOn(Dispatchers.IO)
 
     /** Reads one document end to end, writing what survives in batches. */
@@ -308,8 +375,13 @@ class XmltvImporter(
         stats: Stats,
         onChannelMatched: (keys: List<String>, byName: Boolean) -> Unit,
         onFilled: (channelKey: String) -> Unit,
+        /** Overwrite a stored programme in the same slot instead of keeping it (a primary guide). */
+        replace: Boolean = false,
     ) {
         val batch = ArrayList<ProgramEntity>(BATCH_SIZE)
+        val dao = db.programDao()
+        val write: (List<ProgramEntity>) -> Unit =
+            if (replace) dao::replaceAllBlocking else dao::insertAllBlocking
         val reader = open()
         if (stats.problem != null) {
             reader.close()
@@ -330,13 +402,13 @@ class XmltvImporter(
                     onFilled(program.channelKey)
                     batch.add(program)
                     if (batch.size >= BATCH_SIZE) {
-                        db.programDao().insertAllBlocking(batch)
+                        write(batch)
                         batch.clear()
                     }
                 },
             )
         }
-        if (batch.isNotEmpty()) db.programDao().insertAllBlocking(batch)
+        if (batch.isNotEmpty()) write(batch)
     }
 
     /**
@@ -608,6 +680,8 @@ class XmltvImporter(
         /** Seventy-two hours ahead. Beyond that the data is not worth a Fire Stick's storage. */
         const val FUTURE_WINDOW_MS = 72 * 60 * 60 * 1000L
         const val BATCH_SIZE = 500
+        /** Keys per `IN (...)`: Android 5's SQLite allows 999 bound variables. */
+        private const val KEY_CHUNK = 500
         const val UNTITLED = "Untitled"
     }
 }

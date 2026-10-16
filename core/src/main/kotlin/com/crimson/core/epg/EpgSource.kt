@@ -67,4 +67,29 @@ object EpgSources {
      */
     fun forCountries(countries: Set<String>): List<EpgSource> =
         BUILT_IN.filter { it.appliesTo(countries) }
+
+    /** Row tags for the viewer's own guides: `playlist`, `playlist2`, … */
+    fun primaryId(index: Int): String = if (index == 0) PRIMARY_ID else "$PRIMARY_ID${index + 1}"
+
+    const val PRIMARY_ID = "playlist"
+    private const val MAX_PRIMARY = 3
+
+    /** Every id [primary] can hand out, for keeping their rows when the public feeds are switched off. */
+    val PRIMARY_IDS: List<String> = (0 until MAX_PRIMARY).map(::primaryId)
+
+    /**
+     * The viewer's own guide: the EPG URL entered with the profile, or failing that the ones the
+     * playlist names in its header. Comma-separated URLs are allowed; at most three are read.
+     */
+    fun primary(profileEpgUrl: String, playlistHeaderUrls: List<String> = emptyList()): List<EpgSource> {
+        val urls = profileEpgUrl.split(',', ' ', '\n')
+            .map { it.trim() }
+            .filter { it.startsWith("http://", true) || it.startsWith("https://", true) }
+            .ifEmpty { playlistHeaderUrls }
+            .distinct()
+            .take(MAX_PRIMARY)
+        return urls.mapIndexed { i, url ->
+            EpgSource(primaryId(i), if (urls.size == 1) "Your guide" else "Your guide ${i + 1}", url)
+        }
+    }
 }

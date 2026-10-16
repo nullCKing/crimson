@@ -22,7 +22,13 @@ import kotlinx.coroutines.Dispatchers
 sealed interface ImportProgress {
     data object ReadingCategories : ImportProgress
     data class Scanning(val seen: Int, val kept: Int, val category: String?) : ImportProgress
-    data class Done(val seen: Int, val kept: Int, val skippedCategories: Int) : ImportProgress
+    data class Done(
+        val seen: Int,
+        val kept: Int,
+        val skippedCategories: Int,
+        /** Guide URLs a playlist named in its header (`url-tvg`). */
+        val guideUrls: List<String> = emptyList(),
+    ) : ImportProgress
 }
 
 /**
@@ -115,6 +121,11 @@ class ChannelImporter(
         sink.flush()
         val kept = sink.kept
         db.channelDao().deleteStaleIn(toFetch.map { it.category.categoryId }, startedAt)
+        if (!onlyNewCategories && kept > 0) {
+            // Left over from when this profile used an M3U playlist.
+            db.channelDao().deletePlaylistChannels()
+            db.categoryDao().deletePlaylistCategories()
+        }
 
         emit(ImportProgress.Done(seen, kept, skipped))
     }.flowOn(Dispatchers.IO)

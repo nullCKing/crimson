@@ -173,10 +173,12 @@ private fun AddProfileTile(onClick: () -> Unit, focusRequester: FocusRequester?,
 }
 
 /**
- * Adding or editing a profile: a name, an avatar, and the Xtream login behind it.
+ * Adding or editing a profile: a name, an avatar, the Xtream login behind it and, optionally, an
+ * M3U playlist and guide link (EPGenius hands out exactly that pair).
  *
  * Saving signs in first, so a profile that exists is a profile that works; the provider's own
- * error message is shown when it refuses.
+ * error message is shown when it refuses. The playlist is read on the next sign-in, and its own
+ * errors (a link that is not a playlist) are shown on the profile picker.
  */
 @Composable
 fun EditProfileScreen(
@@ -185,7 +187,7 @@ fun EditProfileScreen(
     saving: Boolean,
     error: String?,
     encrypted: Boolean,
-    onSave: (name: String, avatar: Int, server: String, username: String, password: String) -> Unit,
+    onSave: (name: String, avatar: Int, server: String, username: String, password: String, playlist: String, epg: String) -> Unit,
     onCancel: () -> Unit,
     onDelete: (() -> Unit)?,
 ) {
@@ -194,11 +196,13 @@ fun EditProfileScreen(
     var server by rememberSaveable { mutableStateOf(existing?.serverUrl ?: "") }
     var username by rememberSaveable { mutableStateOf(existing?.username ?: "") }
     var password by rememberSaveable { mutableStateOf(existing?.password ?: "") }
+    var playlist by rememberSaveable { mutableStateOf(existing?.playlistUrl ?: "") }
+    var epg by rememberSaveable { mutableStateOf(existing?.epgUrl ?: "") }
     var confirmDelete by remember { mutableStateOf(false) }
     val nameFocus = remember { FocusRequester() }
     com.crimson.ui.components.InitialFocus(nameFocus)
 
-    val submit = { if (!saving) onSave(name, avatar, server, username, password) }
+    val submit = { if (!saving) onSave(name, avatar, server, username, password, playlist, epg) }
 
     PageBackground {
         Column(Modifier.fillMaxSize().padding(horizontal = 72.dp, vertical = 36.dp)) {
@@ -229,17 +233,35 @@ fun EditProfileScreen(
                 }
                 Spacer(Modifier.width(40.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CrimsonTextField("Profile name", name, { name = it.take(20) }, placeholder = "Chris", focusRequester = nameFocus)
-                    CrimsonTextField("Server URL", server, { server = it.trim() }, placeholder = "http://provider.example:8080", keyboardType = KeyboardType.Uri)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CrimsonTextField("Profile name", name, { name = it.take(20) }, Modifier.weight(0.4f), placeholder = "Chris", focusRequester = nameFocus)
+                        CrimsonTextField("Server URL", server, { server = it.trim() }, Modifier.weight(0.6f), placeholder = "http://provider.example:8080", keyboardType = KeyboardType.Uri)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         CrimsonTextField("Username", username, { username = it.trim() }, Modifier.weight(1f))
                         CrimsonTextField(
                             "Password", password, { password = it }, Modifier.weight(1f),
-                            isPassword = true, keyboardType = KeyboardType.Password, imeAction = ImeAction.Done, onDone = submit,
+                            isPassword = true, keyboardType = KeyboardType.Password,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CrimsonTextField(
+                            "M3U playlist URL (optional)", playlist, { playlist = it.trim() }, Modifier.weight(1f),
+                            placeholder = "Live channels from a playlist", keyboardType = KeyboardType.Uri,
+                        )
+                        CrimsonTextField(
+                            "Guide (EPG) URL (optional)", epg, { epg = it.trim() }, Modifier.weight(1f),
+                            placeholder = "XMLTV, read first", keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Done, onDone = submit,
                         )
                     }
                     if (!error.isNullOrBlank()) {
                         Text(error, style = CrimsonType.Body.copy(color = Crimson.RedBright, fontWeight = FontWeight.SemiBold))
+                    } else if (playlist.isNotBlank()) {
+                        Text(
+                            "Live TV will use the playlist's channels; Movies and TV Shows still come from the login above.",
+                            style = CrimsonType.Caption,
+                        )
                     } else if (server.startsWith("http://")) {
                         Text("This server uses plain HTTP, so the password travels unencrypted.", style = CrimsonType.Caption)
                     }

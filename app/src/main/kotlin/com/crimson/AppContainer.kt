@@ -4,6 +4,7 @@ import android.content.Context
 import com.crimson.data.db.CrimsonDatabase
 import com.crimson.data.epg.ShortEpgFetcher
 import com.crimson.data.epg.XmltvImporter
+import com.crimson.data.playlist.PlaylistImporter
 import com.crimson.data.profile.Profile
 import com.crimson.data.profile.ProfileStore
 import com.crimson.data.settings.SettingsStore
@@ -19,7 +20,7 @@ import okhttp3.OkHttpClient
  * Everything that belongs to one signed-in profile: its provider connection, its database and its
  * settings. Switching profile swaps the whole session; nothing in one leaks into another.
  */
-class Session(context: Context, val profile: Profile, httpClient: OkHttpClient) {
+class Session(context: Context, val profile: Profile, private val httpClient: OkHttpClient) {
     val client: XtreamClient = XtreamClient(profile.account, httpClient)
     val database: CrimsonDatabase = CrimsonDatabase.open(context, profile.id)
     val settings: SettingsStore = SettingsStore.forProfile(context, profile.id)
@@ -30,6 +31,7 @@ class Session(context: Context, val profile: Profile, httpClient: OkHttpClient) 
     fun channelImporter() = ChannelImporter(client, database)
     fun xmltvImporter() = XmltvImporter(client, database)
     fun shortEpgFetcher() = ShortEpgFetcher(client, database)
+    fun playlistImporter() = PlaylistImporter(httpClient, database, appContext.cacheDir)
     fun libraryImporter() = LibraryImporter(client, database) {
         appContext.assets.open(TITLE_INDEX_ASSET).reader()
     }
@@ -136,6 +138,16 @@ class AppContainer(context: Context) {
     fun channelImporter(): ChannelImporter? = session?.channelImporter()
     fun xmltvImporter(): XmltvImporter? = session?.xmltvImporter()
     fun shortEpgFetcher(): ShortEpgFetcher? = session?.shortEpgFetcher()
+    fun playlistImporter(): PlaylistImporter? = session?.playlistImporter()
+
+    /**
+     * The signed-in profile as currently saved. [Session.profile] is the copy it was opened with;
+     * the playlist's guide URL can be filled in after that.
+     */
+    fun currentProfile(): Profile? = session?.profile?.let { profiles.byId(it.id) ?: it }
+
+    /** Another profile's settings, for marking it as needing a fresh import after an edit. */
+    fun settingsFor(profileId: String): SettingsStore = SettingsStore.forProfile(appContext, profileId)
     fun libraryImporter(): LibraryImporter? = session?.libraryImporter()
 
     companion object {

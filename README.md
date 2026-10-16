@@ -30,6 +30,8 @@ canvas-drawn guide grid — is RetroGuide's, kept and still tested. The interfac
 | **Live TV** | Opens on a recommended lineup — American Cable by default, Japanese and Korean TV a click away — in rows by section with what each channel is showing now. The focused channel previews in the hero on the same single player, so Select continues the stream without a re-tune. TV Guide opens the grid on that lineup. |
 | **Browse by Country** | Every live category the provider has, grouped by country with flags, searchable. Countries the import never kept are read from the provider when opened and play directly. |
 | **Sports** | Scores and schedules for NFL, college football (every FBS and FCS game, with poll rankings), NBA, MLB, NHL, WNBA, college basketball (all of Division I), MLS and the big European soccer leagues, from ESPN's public scoreboard, refreshed every minute. A busy day is split into a row per league and division. Selecting a game searches Live TV for its network ("NBC" → your NBC), falling back to its other networks and then the teams. |
+| **M3U playlist and guide link** | A profile can name an M3U playlist and an XMLTV guide link, such as the pair EPGenius hands out. The playlist's channels become the Live TV lineup (its names, groups and order), and its guide is read before the provider's, matched to channels by the playlist's `tvg-id`s. Films and TV shows still come from the Xtream login. See "Using EPGenius" below. |
+| **Stream recovery** | A channel that stops sending is reopened within about 8 seconds (a frozen picture within 6), retried for two minutes, and re-selecting a stuck channel starts it again. |
 | **Search** | An on-screen keyboard beside results that narrow as you type, across channels, films and series. Ranking puts the exact name first ("nbc" → NBC before CNBC and MSNBC). The search survives opening a result and coming back; leaving the search page clears it. |
 
 ---
@@ -75,6 +77,50 @@ The values are compiled into the APK, so build it only for your own devices.
 
 ---
 
+## Using EPGenius (or any M3U playlist with a guide)
+
+EPGenius gives you two links: a **Playlist URL** and an **EPG URL**. Its instructions say to use
+"the M3U option, not the Xtream option" because other players can only do one or the other.
+Crimson does both in one profile:
+
+1. Settings → Profile → **Edit this profile** (or Add Profile).
+2. Keep your provider's **server, username and password**: films and TV shows still come from them.
+3. Put the Playlist URL in **M3U playlist URL** and the EPG URL in **Guide (EPG) URL**. For a
+   Google Drive link, use the direct-download form
+   (`https://drive.usercontent.google.com/download?id=…&confirm=t`); a plain Drive share link
+   returns a web page, and the app says so. The Fire TV mobile app's keyboard makes typing a long
+   link bearable.
+4. Save, then pick the profile. The playlist is read (a few seconds), Live TV shows its channels,
+   and the guide downloads in the background (EPGenius's is 22 MB, 175 MB unpacked; expect a
+   minute or more on a Fire TV). Settings → Guide Data shows "Your guide: N programmes for M
+   channels".
+
+Leave the Guide field empty to use whatever guide the playlist names in its header (`url-tvg`).
+Settings → Live TV → **Reload channels** reads the playlist again. Clearing the playlist field
+goes back to the provider's own channel list.
+
+What it does not change: the streams themselves. A curated playlist points at the same provider
+servers as the Xtream login, so picture quality and how often the provider's server stalls are
+the provider's. What it can change is *which* feed of a channel you get (curators tend to pick
+the one that works) and the guide, which matches by id instead of by guessing from names.
+
+## Buffering, and HLS versus MPEG-TS
+
+Settings → Playback → **Use HLS** switches how live channels are fetched (provider channels, and
+playlist channels whose links are Xtream links):
+
+- **MPEG-TS (`.ts`, the default)** is one long download. It starts quickly and runs a few seconds
+  behind live. If the connection hiccups, the whole stream breaks and has to be reopened.
+- **HLS (`.m3u8`)** fetches the stream as a series of short files. A hiccup only means fetching one
+  file again, so it often rides out a bad connection better, but it runs 10 to 30 seconds further
+  behind live, and some providers' HLS is worse than their TS.
+
+Which is steadier depends on the provider's server; try each for a day. Either way, a stream that
+stops sending is now reopened within seconds instead of sitting on "buffering" (see `DECISIONS.md`,
+Crimson 1.4).
+
+---
+
 ## Run the mock Xtream server
 
 ```
@@ -98,6 +144,17 @@ Create a profile with:
 | Password | `testpass` |
 
 `--public-streams` redirects live playback to public test streams; `--no-media` skips FFmpeg.
+
+**Playlist and guide.** The server also answers Xtream's own M3U endpoint, the way a curated
+playlist service would: put
+`http://10.0.2.2:8080/get.php?username=testuser&password=testpass&type=m3u_plus` in the profile's
+M3U field and leave the guide empty (the playlist names `http://10.0.2.2:8080/epg.xml.gz`). Its
+`tvg-id`s exist only in that guide, and its programme titles start with "PL ·", so a "PL ·" title
+in the guide shows the playlist's guide was used.
+
+**Stalls.** `--stall-after 40` makes every `.ts` stream stop sending after 40 seconds while
+keeping the connection open, which is what an overloaded panel does. Live TV should show
+"Reconnecting…" about 8 seconds later and play again.
 
 **Captions.** `python make_dialogue.py` (Windows: it uses the built-in speech synthesiser) makes a
 four-minute film of spoken lines, explosions and music, with the true line burned into the top of

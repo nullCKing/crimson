@@ -3,6 +3,11 @@
 Written so a session with no memory of this one can pick it up. Read `DECISIONS.md` for why
 things are the way they are.
 
+**Status (2026-10-16): version 1.4 (versionCode 5), not built: streams that stall are reopened,
+and a profile can use an M3U playlist and guide link (EPGenius). See "Version 1.4" below. Written
+in a cloud session with no Android SDK and no access to Google's Maven, so only `core` was
+compiled and tested.**
+
 **Status (2026-09-25): version 1.3 (`dist/crimson-1.3.apk`, versionCode 4): streaming-app
 player controls, captions no longer doubled, English audio first with a track picker; see
 "Version 1.3" below.**
@@ -20,6 +25,41 @@ reachable over ADB that day.**
 lint, minified release; `gradlew release` verifies the APK installs on Fire OS 5+), every page has
 been driven on an Android TV emulator against the mock server, and it now runs on the user's
 real Fire TV (2nd-gen box, Fire OS 5.2.9.5 / Android 5.1) with their real account.**
+
+### Version 1.4, 2026-10-16
+
+Asked for: random buffering, a channel that buffers once and never recovers, and EPGenius's
+playlist and guide. What was done and what was checked:
+
+- **Stalls.** Cause found in the code: the player used the Xtream client's 120 s read timeout,
+  so a server that went silent left the player buffering for minutes, after which the 30 s
+  reconnect budget was spent. Fixed with a stream-only HTTP client, a stall watchdog, a longer
+  and steadier reconnect, restart-on-reselect, the API's User-Agent on streams, and a larger
+  start-up cushion (details in `DECISIONS.md`). `core`'s `RecoveryTest` covers the watchdog and
+  the retry timing. **Not run on a device.**
+- **M3U playlist + guide link** on the profile editor; the playlist replaces the channel list,
+  the guide is read first. `core`'s `M3uTest` covers the parser and Xtream URL handling. The
+  mock server's new `get.php`/`epg.xml.gz` were checked with curl (861 channels, 87,958
+  programmes under playlist-only ids). **The app was not compiled or run**: this environment has
+  no Android SDK, and Google's Maven is blocked from it.
+- **EPGenius's guide** (`epg6.xml.gz` from ferteque/Curated-M3U-Repository) was downloaded and
+  measured: 22 MB gzipped, 175 MB of XML, 15,376 channels, 602,264 programmes, times in the
+  standard `20261015000000 +0000` form the existing parser reads. The user's playlist (a Google
+  Drive link) could not be fetched from here (the proxy refused Drive), so its contents are
+  unseen.
+- `core`: 244 tests pass (Kotlin 2.0.21, JDK 21, compiled outside the project's Gradle build
+  because the Android plugin could not be resolved).
+
+To do on the Windows machine before calling it done:
+
+1. `.\gradlew.bat build` — first compile of the app changes. Room will write
+   `app/schemas/.../2.json`; commit it.
+2. `.\gradlew.bat recordRoborazziDebug` — the profile editor (a third row of fields) and
+   Settings (Channel list, stream-format text) changed.
+3. Emulator: mock server with `--stall-after 40`, play a channel, check "Reconnecting…" then
+   picture again within ~10 s; re-select a stuck channel. Then a profile with the mock's
+   `get.php` playlist: Live TV shows its channels, guide titles start with "PL ·".
+4. Fire TV: the user's real EPGenius links; time the guide import and watch memory.
 
 ### Version 1.3, 2026-09-25
 

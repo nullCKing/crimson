@@ -15,7 +15,9 @@ import java.util.UUID
 
 /**
  * A profile: one Xtream login, with a name and an avatar, the way a streaming service has one
- * profile per person in the house.
+ * profile per person in the house. It can also name an M3U playlist and a guide (XMLTV) URL, such
+ * as the pair EPGenius hands out: the playlist then supplies the live channels and the guide is
+ * read first, while films and series still come from the Xtream login.
  *
  * Each profile is a separate account as far as the data goes — its own database of channels,
  * guide and catalogue, its own settings, its own list and viewing history — because two logins
@@ -30,8 +32,14 @@ data class Profile(
     val username: String,
     val password: String,
     val createdAt: Long = System.currentTimeMillis(),
+    /** An M3U playlist whose channels replace the provider's channel list. Blank for none. */
+    val playlistUrl: String = "",
+    /** An XMLTV guide read before any other. Blank: the playlist's own `url-tvg`, if it has one. */
+    val epgUrl: String = "",
 ) {
     val account: XtreamAccount get() = XtreamAccount(serverUrl, username, password)
+
+    val usesPlaylist: Boolean get() = playlistUrl.isNotBlank()
 
     companion object {
         fun newId(): String = UUID.randomUUID().toString().replace("-", "").take(12)
@@ -108,6 +116,8 @@ class ProfileStore(private val context: Context) {
                 username = o.optString("user"),
                 password = o.optString("pass"),
                 createdAt = o.optLong("created"),
+                playlistUrl = o.optString("playlist"),
+                epgUrl = o.optString("epg"),
             )
         }
     } catch (e: Exception) {
@@ -127,6 +137,8 @@ class ProfileStore(private val context: Context) {
                     .put("user", p.username)
                     .put("pass", p.password)
                     .put("created", p.createdAt)
+                    .put("playlist", p.playlistUrl)
+                    .put("epg", p.epgUrl)
             )
         }
         runCatching { prefs.edit().putString(KEY_PROFILES, array.toString()).commit() }

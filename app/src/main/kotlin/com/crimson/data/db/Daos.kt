@@ -35,12 +35,14 @@ interface ChannelDao {
      * rows — comfortably inside the 100 ms budget.
      *
      * A channel with no market is national and is kept whenever its country is allowed. A channel
-     * with a market is a local and additionally needs that market to be allowed.
+     * with a market is a local and additionally needs that market to be allowed. A channel from
+     * the viewer's own M3U playlist (it has a `streamUrl`) is always kept: the playlist is the
+     * lineup they chose.
      */
     @Query(
         """
         SELECT * FROM channels
-        WHERE country IN (:countries)
+        WHERE (streamUrl IS NOT NULL OR country IN (:countries))
           AND (market IS NULL OR market IN (:markets))
         ORDER BY number ASC
         """
@@ -50,7 +52,7 @@ interface ChannelDao {
     @Query(
         """
         SELECT * FROM channels
-        WHERE country IN (:countries)
+        WHERE (streamUrl IS NOT NULL OR country IN (:countries))
           AND (market IS NULL OR market IN (:markets))
         ORDER BY number ASC
         """
@@ -85,6 +87,14 @@ interface ChannelDao {
 
     @Query("DELETE FROM channels")
     suspend fun clear()
+
+    /** Channels from a playlist, after the profile has gone back to the provider's list. */
+    @Query("DELETE FROM channels WHERE streamUrl IS NOT NULL")
+    suspend fun deletePlaylistChannels()
+
+    /** Removes every channel an import did not see: the whole old list after a playlist import. */
+    @Query("DELETE FROM channels WHERE lastSeenAt < :before")
+    fun deleteSeenBeforeBlocking(before: Long)
 }
 
 @Dao
@@ -102,6 +112,10 @@ interface ProgramDao {
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertAllBlocking(programs: List<ProgramEntity>)
+
+    /** For the viewer's own guide, which wins a slot another source already holds. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun replaceAllBlocking(programs: List<ProgramEntity>)
 
     /**
      * Everything on these channels that overlaps the window.
@@ -157,6 +171,13 @@ interface ProgramDao {
     @Query("DELETE FROM programs WHERE channelKey = :channelKey")
     suspend fun clearChannel(channelKey: String)
 
+    /**
+     * Drops what other sources stored for channels [source] now covers, so a refresh in which a
+     * better guide took a channel over does not leave the old listings interleaved with the new.
+     */
+    @Query("DELETE FROM programs WHERE channelKey IN (:channelKeys) AND source != :source")
+    fun deleteOtherSourcesBlocking(channelKeys: List<String>, source: String)
+
     @Query("DELETE FROM programs")
     suspend fun clear()
 }
@@ -181,6 +202,15 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories")
     suspend fun clear()
+
+    @Query("DELETE FROM categories")
+    fun clearBlocking()
+
+    @Query("DELETE FROM categories WHERE categoryId LIKE 'm3u:%'")
+    suspend fun deletePlaylistCategories()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertAllBlocking(categories: List<CategoryEntity>)
 }
 
 @Dao

@@ -58,6 +58,15 @@ data class ChannelEntity(
 
     /** Wall-clock millis of the import that last saw this channel. */
     val lastSeenAt: Long,
+
+    /**
+     * The URL to play, for a channel from an M3U playlist. Null for the provider's own channels,
+     * whose URL is built from the stream id and the chosen format. A channel with a URL came from
+     * the viewer's playlist, and the country filter does not apply to it.
+     */
+    val streamUrl: String? = null,
+    /** A User-Agent the playlist asks for when playing this channel. */
+    val userAgent: String? = null,
 ) {
     val countryEnum: Country? get() = Country.fromCode(country)
     val marketEnum: Market? get() = market?.let { runCatching { Market.valueOf(it) }.getOrNull() }

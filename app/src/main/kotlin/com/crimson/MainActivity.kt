@@ -180,7 +180,9 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                         saving = ui.isSavingProfile,
                         error = ui.profileError,
                         encrypted = ui.profilesEncrypted,
-                        onSave = { name, av, server, user, pass -> vm.saveProfile(existing?.id, name, av, server, user, pass) },
+                        onSave = { name, av, server, user, pass, playlist, epg ->
+                            vm.saveProfile(existing?.id, name, av, server, user, pass, playlist, epg)
+                        },
                         onCancel = { vm.back() },
                         onDelete = existing?.let { { vm.deleteProfile(it.id) } },
                     )
@@ -451,6 +453,7 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                             onRebuildCatalogue = { vm.importLibrary(force = true) },
                             onSwitchProfile = vm::openProfiles,
                             onEditProfile = { vm.editProfile(vm.ui.value.profile?.id) },
+                            onReloadChannels = vm::reloadChannels,
                         )
                     },
                 )
