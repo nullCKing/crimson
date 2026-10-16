@@ -109,6 +109,12 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
     val sports = SportsController(container)
     val captions = com.crimson.ui.player.CaptionsController(container.player, container.subtitles)
     val themeSkip = com.crimson.ui.player.ThemeSkipController(container.player, container.themeSkips)
+    val multiView = com.crimson.ui.player.MultiViewController(
+        players = container.multiViewPlayers,
+        setMainVolume = { container.player.setVolume(it) },
+        tuneMain = { playLive(it) },
+        urlFor = ::liveUrlFor,
+    )
 
     private val _vodControls = MutableStateFlow(com.crimson.ui.player.VodControls())
     /** The film-and-episode controls: shown or not, what has focus, where a scrub is heading. */
@@ -201,6 +207,10 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         when (current) {
             is Route.Guide -> if (_guide.value.details != null) { dismissDetails(); return true }
             is Route.Main -> if (current.tab != MainTab.HOME) { openTab(MainTab.HOME); return true }
+            is Route.MultiView -> {
+                if (multiView.state.value.pickingFor != null) multiViewClosePicker() else finishMultiView()
+                return true
+            }
             else -> Unit
         }
         if (stack.size <= 1) {
@@ -227,8 +237,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             resetVodControls()
             if (_ui.value.playerMenuOpen) _ui.value = _ui.value.copy(playerMenuOpen = false)
             // Watching is over once the viewer leaves it, except into the guide, whose preview
-            // window is the same stream.
-            if (to != Route.Guide) {
+            // window is the same stream, and into Multiview, whose first window is.
+            if (to != Route.Guide && to != Route.MultiView) {
                 container.player.stop()
                 _ui.value = _ui.value.copy(nowPlaying = null)
             }
@@ -439,9 +449,11 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         sports.scope = sessionScope
         captions.scope = sessionScope
         themeSkip.scope = sessionScope
+        multiView.scope = sessionScope
         observeSettings()
         observeCategories()
         keepLiveDataFresh()
+        readConnectionLimit()
     }
 
     /**
@@ -450,6 +462,14 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
      * played two days ago could still be on Home until the app was restarted. The scoreboard
      * is cached for a minute, so this costs one request per league per minute at most.
      */
+    /** The account's connection limit, which is how many Multiview windows it can have. */
+    private fun readConnectionLimit() {
+        sessionScope.launch {
+            val info = withContext(Dispatchers.IO) { runCatching { container.client?.login() }.getOrNull() } ?: return@launch
+            _ui.value = _ui.value.copy(maxConnections = info.maxConnections)
+        }
+    }
+
     private fun keepLiveDataFresh() {
         sessionScope.launch {
             while (true) {
@@ -465,6 +485,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         sessionJob?.cancel()
         sessionJob = null
         channelsJob = null; importJob = null; programsJob = null; libraryJob = null; progressJob = null
+        if (multiView.isOpen) multiView.close()
         container.player.stop()
         if (::sessionScope.isInitialized) { captions.stop(); themeSkip.stop() }
         previewActive = false
@@ -908,23 +929,32 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         if (route != Route.Watching) navigate(Route.Watching)
     }
 
+    /**
+     * The URL and User-Agent a live channel plays with. A playlist channel plays its own URL
+     * (switched to HLS or MPEG-TS like any other when it is an Xtream one); the provider's
+     * channels are built from the stream id.
+     */
+    private suspend fun liveUrlFor(channel: GuideChannel): Pair<String, String?>? {
+        val settings = container.settings.settings.first()
+        val client = container.client ?: return null
+        val row = withContext(Dispatchers.IO) { container.database.channelDao().byStreamId(channel.streamId) }
+        val url = row?.streamUrl?.let { XtreamUrl.withFormat(it, settings.streamFormat) }
+            ?: client.streamUrl(channel.streamId, settings.streamFormat)
+        return url to row?.userAgent
+    }
+
     private fun playLive(channel: GuideChannel, remember: Boolean = true) {
         sessionScope.launch {
             val settings = container.settings.settings.first()
-            val client = container.client ?: return@launch
+            val (url, userAgent) = liveUrlFor(channel) ?: return@launch
             themeSkip.stop()
-            // A playlist channel plays its own URL (switched to HLS or MPEG-TS like any other
-            // when it is an Xtream one); the provider's channels are built from the stream id.
-            val row = withContext(Dispatchers.IO) { container.database.channelDao().byStreamId(channel.streamId) }
-            val url = row?.streamUrl?.let { XtreamUrl.withFormat(it, settings.streamFormat) }
-                ?: client.streamUrl(channel.streamId, settings.streamFormat)
             container.player.play(
                 PlayableChannel(
                     streamId = channel.streamId,
                     number = channel.number,
                     name = channel.name,
                     url = url,
-                    userAgent = row?.userAgent,
+                    userAgent = userAgent,
                 )
             )
             if (!remember) return@launch
@@ -1492,6 +1522,51 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         _ui.value = _ui.value.copy(settings = _ui.value.settings.copy(preferEnglishAudio = on))
         container.player.setPreferEnglishAudio(on)
         sessionScope.launch { container.settings.setPreferEnglishAudio(on) }
+    }
+
+    // ================================================================== multiview
+
+    /** How many windows Multiview can have: one per connection the account allows, up to four. */
+    val multiViewWindows: Int get() = _ui.value.maxConnections.coerceAtMost(com.crimson.ui.player.MultiViewController.MAX_WINDOWS)
+
+    /** Opens Multiview with the channel being watched in the first window. */
+    fun openMultiView() {
+        val channel = _banner.value.channel ?: return
+        if (_ui.value.nowPlaying?.isVod == true || multiViewWindows < 2) return
+        _ui.value = _ui.value.copy(playerMenuOpen = false)
+        multiView.open(channel, multiViewWindows)
+        navigate(Route.MultiView)
+    }
+
+    /** The channels the picker offers: favourites, then the lineup the viewer tuned from. */
+    fun multiViewCandidates(): List<GuideChannel> {
+        val lineup = zapList.ifEmpty { _guide.value.channels.ifEmpty { _guide.value.allChannels } }
+        val favourites = _guide.value.allChannels.filter { it.isFavorite }
+        return (favourites + lineup).distinctBy { it.streamId }
+    }
+
+    fun multiViewMove(dx: Int, dy: Int) = multiView.move(dx, dy)
+
+    fun multiViewSelect() {
+        if (multiView.select() != null) finishMultiView()
+    }
+
+    fun multiViewReplace() = multiView.replaceFocused()
+
+    fun multiViewPick(channel: GuideChannel) = multiView.pick(channel)
+
+    fun multiViewClosePicker() {
+        // The picker that opened with Multiview, before any second channel: closing it leaves.
+        val s = multiView.state.value
+        if (s.slots.count { it != null } <= 1) finishMultiView() else multiView.closePicker()
+    }
+
+    /** Leaves Multiview full screen on the window under the cursor; the other streams close. */
+    private fun finishMultiView() {
+        val main = multiView.state.value.slots.firstOrNull()
+        val keep = multiView.close()
+        if (route == Route.MultiView) replaceTop(Route.Watching)
+        if (keep != null && keep.streamId != main?.streamId) playLive(keep)
     }
 
     fun openPlayerMenu() {

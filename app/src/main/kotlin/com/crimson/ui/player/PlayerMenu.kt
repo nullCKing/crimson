@@ -64,6 +64,7 @@ class PlayerMenuActions(
     val onForgetThemes: () -> Unit = {},
     val onSelectAudio: (String) -> Unit = {},
     val onPreferEnglishAudio: () -> Unit = {},
+    val onMultiView: () -> Unit = {},
 )
 
 /**
@@ -82,6 +83,8 @@ fun PlayerMenu(
     themeSkip: ThemeSkipState? = null,
     /** The title's audio tracks; a choice is only offered when there are several. */
     audioTracks: List<com.crimson.player.AudioOption> = emptyList(),
+    /** How many Multiview windows the account's connections allow; live only. */
+    multiViewWindows: Int = 0,
 ) {
     val first = remember { FocusRequester() }
     InitialFocus(first)
@@ -115,6 +118,18 @@ fun PlayerMenu(
             Text("OK switches · ◀ ▶ adjust · BACK closes", style = CrimsonType.Caption)
             Spacer(Modifier.height(6.dp))
 
+            if (isLive) {
+                Heading("Watch")
+                MenuRow(
+                    label = "Multiview",
+                    value = if (multiViewWindows >= 2) "$multiViewWindows windows" else "Unavailable",
+                    detail = if (multiViewWindows >= 2) "Watch up to $multiViewWindows channels at once; the sound follows the one you move to"
+                        else "Your account allows one stream at a time, so only one channel can play",
+                    onSelect = { if (multiViewWindows >= 2) actions.onMultiView() },
+                    chevron = multiViewWindows >= 2,
+                )
+                Spacer(Modifier.height(6.dp))
+            }
             Heading("Captions")
             MenuRow(
                 label = "Captions (English)",

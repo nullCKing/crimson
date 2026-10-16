@@ -35,6 +35,8 @@ sealed interface Route {
     data object Directory : Route
     data object Guide : Route
     data object Watching : Route
+    /** Several live channels at once; reached from the player's menu. */
+    data object MultiView : Route
     data object Settings : Route
 }
 

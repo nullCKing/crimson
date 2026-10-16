@@ -140,7 +140,7 @@ private fun CrimsonRoot(onExit: () -> Unit) {
             .focusRequester(rootFocus)
             // Focusable only where it handles the keys itself; elsewhere a page's own controls
             // hold focus, and a focusable root would catch it whenever a page lets go.
-            .focusable(enabled = ui.route == Route.Watching || ui.route == Route.Guide)
+            .focusable(enabled = ui.route == Route.Watching || ui.route == Route.Guide || ui.route == Route.MultiView)
             .onPreviewKeyEvent { handleKey(it, ui.route, vm) }
             .onKeyEvent { event ->
                 // Back bubbles: a page that wants it first (Home returning to its top) consumes it
@@ -350,6 +350,24 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                     },
                 )
 
+                Route.MultiView -> {
+                    val multi by vm.multiView.state.collectAsState()
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val container = remember { AppContainer.get(context) }
+                    com.crimson.ui.player.MultiViewScreen(
+                        state = multi,
+                        mainPlayer = container.player.exoPlayer,
+                        extraPlayer = { container.multiViewPlayers.player(it) },
+                        candidates = remember(multi.pickingFor) { vm.multiViewCandidates() },
+                        actions = remember(vm) {
+                            com.crimson.ui.player.MultiViewActions(
+                                onPick = vm::multiViewPick,
+                                onClosePicker = vm::multiViewClosePicker,
+                            )
+                        },
+                    )
+                }
+
                 Route.Watching -> Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
                     VideoSurface(Modifier.fillMaxSize())
                     val brightness = ui.settings.videoBrightness / 100f
@@ -424,9 +442,11 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                                     onForgetThemes = vm::forgetThemes,
                                     onSelectAudio = vm::selectAudio,
                                     onPreferEnglishAudio = vm::togglePreferEnglishAudio,
+                                    onMultiView = vm::openMultiView,
                                 )
                             },
                             audioTracks = playback.audioTracks,
+                            multiViewWindows = vm.multiViewWindows,
                             themeSkip = themeSkipState.takeIf { ui.nowPlaying?.kind == com.crimson.ui.NowPlaying.Kind.EPISODE },
                         )
                     }
@@ -592,6 +612,16 @@ private fun handleKey(event: KeyEvent, route: Route, vm: CrimsonViewModel): Bool
             Key.F -> { vm.toggleFavoriteSelectedChannel(); true }
             // The Fire remote has no number pad, so Play/Pause carries "last channel" instead.
             Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> { vm.lastChannel(); true }
+            else -> false
+        }
+
+        Route.MultiView -> if (vm.multiView.state.value.pickingFor != null) false else when (event.key) {
+            Key.DirectionUp -> { vm.multiViewMove(0, -1); true }
+            Key.DirectionDown -> { vm.multiViewMove(0, 1); true }
+            Key.DirectionLeft -> { vm.multiViewMove(-1, 0); true }
+            Key.DirectionRight -> { vm.multiViewMove(1, 0); true }
+            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> { vm.multiViewSelect(); true }
+            Key.Menu -> { vm.multiViewReplace(); true }
             else -> false
         }
 

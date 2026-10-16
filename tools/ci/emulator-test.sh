@@ -139,6 +139,30 @@ if [ "$MODE" = mock ] && [ "${STALL:-0}" != 0 ]; then
   shot after-stall
   grep -E "stalled|reopening|first frame|giving up|playback error" "$OUT/logcat.txt" | tail -20 >> "$LOG"
 fi
+say "## Multiview"
+key MENU
+sleep 2
+shot player-menu
+key DPAD_UP DPAD_CENTER     # the Multiview row sits above Captions
+sleep 3
+shot multiview-picker
+key DPAD_DOWN DPAD_DOWN DPAD_CENTER
+sleep 10
+shot multiview-two
+key DPAD_DOWN
+sleep 1
+key DPAD_CENTER             # window 3: pick a third channel
+sleep 2
+key DPAD_DOWN DPAD_DOWN DPAD_DOWN DPAD_CENTER
+sleep 10
+shot multiview-three
+key DPAD_LEFT DPAD_UP       # back to window 1: the sound follows
+sleep 2
+shot multiview-window-1
+key BACK
+sleep 4
+shot after-multiview
+
 key BACK
 sleep 2
 shot back-from-watching

@@ -95,6 +95,11 @@ class AppContainer(context: Context) {
     /** The one and only player. */
     val player: ExoPlayerController by lazy { ExoPlayerController(appContext, httpClient) }
 
+    /** Multiview's extra windows; created only when Multiview opens, released when it closes. */
+    val multiViewPlayers: com.crimson.player.MultiViewPlayers by lazy {
+        com.crimson.player.MultiViewPlayers(appContext, httpClient)
+    }
+
     val subtitles: com.crimson.data.subtitles.SubtitleRepository by lazy {
         com.crimson.data.subtitles.SubtitleRepository(appContext, httpClient)
     }

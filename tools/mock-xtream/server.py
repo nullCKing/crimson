@@ -185,7 +185,7 @@ def user_info():
         "is_trial": "0",
         "active_cons": "0",
         "created_at": "1600000000",
-        "max_connections": "1",
+        "max_connections": str(_args.max_connections),
         "allowed_output_formats": ["ts", "m3u8"],
     }
 
@@ -655,6 +655,8 @@ def main():
                         help="serve media/dual.mkv (Japanese default + English) as every film")
     parser.add_argument("--themes", action="store_true",
                         help="serve the theme-skip test episodes (make_themes.py) as every show's episodes")
+    parser.add_argument("--max-connections", type=int, default=1,
+                        help="what the account says it allows (Multiview offers that many windows)")
     parser.add_argument("--stall-after", type=int, default=0, metavar="SECONDS",
                         help="make every .ts stream stop sending (socket left open) after this long")
     parser.add_argument("--verbose", action="store_true")

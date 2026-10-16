@@ -60,7 +60,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
           cd tools/mock-xtream
-          nohup python3 server.py --port 8080 --stall-after 40 > ../../mock.log 2>&1 &
+          nohup python3 server.py --port 8080 --stall-after 40 --max-connections 4 > ../../mock.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8080/ && break; sleep 2; done
 
       - name: Enable KVM
