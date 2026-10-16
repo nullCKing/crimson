@@ -66,6 +66,25 @@ fill() {
   sleep 1
 }
 
+# Brings Crimson back to the front if a stray Back left it (Back on Home's top leaves the app).
+ensure_app() {
+  if ! adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" | grep -q "$PKG"; then
+    say "  (Crimson was not in front; relaunching)"
+    adb shell am start -n "$PKG/.MainActivity" >/dev/null
+    sleep 5
+  fi
+}
+
+# Opens a tab from the navigation bar: 0 Home, 1 TV Shows, 2 Movies, 3 Live TV, 4 Sports, 5 My List.
+to_tab() {
+  ensure_app
+  key DPAD_UP DPAD_UP DPAD_UP DPAD_UP DPAD_UP
+  key DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT
+  local i; for i in $(seq 1 "$1"); do key DPAD_RIGHT; done
+  key DPAD_CENTER
+  sleep 6
+}
+
 app_mem() { adb shell dumpsys meminfo "$PKG" | grep -E "TOTAL PSS|TOTAL:" | head -1; }
 
 say "# Crimson on the emulator ($MODE), $(date -u +%Y-%m-%dT%H:%MZ)"
@@ -117,15 +136,12 @@ key DPAD_DOWN DPAD_DOWN DPAD_DOWN DPAD_UP DPAD_UP DPAD_UP DPAD_UP
 shot home-after-up
 
 say "## Catalogue (given time to import)"
-sleep 90
-key BACK
+sleep 60
+ensure_app
 shot home-later
-key DPAD_UP
-shot nav-focused
 
 say "## Live TV"
-key DPAD_RIGHT DPAD_RIGHT DPAD_RIGHT DPAD_CENTER
-sleep 6
+to_tab 3
 shot live-tv
 key DPAD_DOWN DPAD_DOWN
 sleep 5
@@ -133,13 +149,15 @@ shot live-preview
 key DPAD_CENTER
 sleep 10
 shot watching
-if [ "$MODE" = mock ] && [ "${STALL:-0}" != 0 ]; then
+if [ "$MODE" != real ] && [ "${STALL:-0}" != 0 ]; then
   say "## Stall recovery (the mock stops sending after ${STALL} s)"
   sleep $((STALL + 20))
   shot after-stall
-  grep -E "stalled|reopening|first frame|giving up|playback error" "$OUT/logcat.txt" | tail -20 >> "$LOG"
+  grep -E "stalled|reopening|first frame|giving up|playback error" "$OUT/logcat.txt" | grep -i crimson | tail -20 >> "$LOG"
 fi
+
 say "## Multiview"
+ensure_app
 key MENU
 sleep 2
 shot player-menu
@@ -156,26 +174,24 @@ sleep 2
 key DPAD_DOWN DPAD_DOWN DPAD_DOWN DPAD_CENTER
 sleep 10
 shot multiview-three
+grep -i "CrimsonMultiView" "$OUT/logcat.txt" | tail -10 >> "$LOG"
 key DPAD_LEFT DPAD_UP       # back to window 1: the sound follows
 sleep 2
 shot multiview-window-1
 key BACK
 sleep 4
 shot after-multiview
-
 key BACK
-sleep 2
+sleep 3
 shot back-from-watching
 
 say "## Sports"
-key BACK
-sleep 1
-key DPAD_UP DPAD_UP
-key DPAD_RIGHT DPAD_CENTER
-sleep 8
+to_tab 4
+sleep 4
 shot sports
 
 say "## Settings (guide summary)"
+ensure_app
 key MENU
 sleep 3
 shot settings

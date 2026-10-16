@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [ mock, real ]
+        mode: [ mock, novod, real ]
     steps:
       - name: Real-account secrets present?
         id: gate
@@ -56,11 +56,12 @@ jobs:
           ls app/build/outputs/apk/release/
 
       - name: Mock provider
-        if: steps.gate.outputs.run == 'true' && matrix.mode == 'mock'
+        if: steps.gate.outputs.run == 'true' && matrix.mode != 'real'
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
           cd tools/mock-xtream
-          nohup python3 server.py --port 8080 --stall-after 40 --max-connections 4 > ../../mock.log 2>&1 &
+          extra=""; [ "${{ matrix.mode }}" = novod ] && extra="--no-vod"
+          nohup python3 server.py --port 8080 --stall-after 40 --max-connections 4 $extra > ../../mock.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8080/ && break; sleep 2; done
 
       - name: Enable KVM

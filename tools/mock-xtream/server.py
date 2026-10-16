@@ -302,6 +302,11 @@ class Handler(BaseHTTPRequestHandler):
             self._json(_vod.movie_categories)
             return
 
+        if _args.no_vod and action in ("get_vod_categories", "get_vod_streams", "get_series_categories", "get_series"):
+            # An account whose catalogue is empty (or still importing): Home has no billboard.
+            self._json([])
+            return
+
         if action == "get_vod_streams":
             self._json(_vod.vod_streams(params.get("category_id", [None])[0]))
             return
@@ -655,6 +660,8 @@ def main():
                         help="serve media/dual.mkv (Japanese default + English) as every film")
     parser.add_argument("--themes", action="store_true",
                         help="serve the theme-skip test episodes (make_themes.py) as every show's episodes")
+    parser.add_argument("--no-vod", action="store_true",
+                        help="serve no films or series, as an account whose catalogue has not loaded")
     parser.add_argument("--max-connections", type=int, default=1,
                         help="what the account says it allows (Multiview offers that many windows)")
     parser.add_argument("--stall-after", type=int, default=0, metavar="SECONDS",
