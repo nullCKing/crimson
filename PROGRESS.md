@@ -3,6 +3,11 @@
 Written so a session with no memory of this one can pick it up. Read `DECISIONS.md` for why
 things are the way they are.
 
+**Status (2026-10-16, later): 1.4 built by GitHub Actions (`.github/workflows/build-apk.yml`):
+compiled, lint-vital, R8 and the Fire OS 5 install check all passed, published as the v1.4
+prerelease. Signed with a CI key (the release-key secrets are not set), so it does not install
+over 1.3. Not yet run on a device.**
+
 **Status (2026-10-16): version 1.4 (versionCode 5), not built: streams that stall are reopened,
 and a profile can use an M3U playlist and guide link (EPGenius). See "Version 1.4" below. Written
 in a cloud session with no Android SDK and no access to Google's Maven, so only `core` was
