@@ -79,8 +79,11 @@ ensure_app() {
 to_tab() {
   ensure_app
   key DPAD_UP DPAD_UP DPAD_UP DPAD_UP DPAD_UP
-  key DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT
-  local i; for i in $(seq 1 "$1"); do key DPAD_RIGHT; done
+  sleep 1.5                      # the navigation bar slides in
+  key DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT
+  sleep 1
+  local i; for i in $(seq 1 "$1"); do key DPAD_RIGHT; sleep 0.6; done
+  shot "nav-before-tab-$1"
   key DPAD_CENTER
   sleep 6
 }
