@@ -44,9 +44,13 @@ playlist and guide. What was done and what was checked:
   no Android SDK, and Google's Maven is blocked from it.
 - **EPGenius's guide** (`epg6.xml.gz` from ferteque/Curated-M3U-Repository) was downloaded and
   measured: 22 MB gzipped, 175 MB of XML, 15,376 channels, 602,264 programmes, times in the
-  standard `20261015000000 +0000` form the existing parser reads. The user's playlist (a Google
-  Drive link) could not be fetched from here (the proxy refused Drive), so its contents are
-  unseen.
+  standard `20261015000000 +0000` form the existing parser reads.
+- **The user's real playlist** (uploaded; not committed, it carries the account) was run through
+  `core` offline: parsed in 259 ms on a desktop JVM, 19,120 entries, all Xtream live links;
+  204 section headings skipped; 18,857 channels after keeping cross-listed streams; 17,745
+  `tvg-id`s match `epg6`; American Cable resolves 69 of 73 by name (CBS, NBC, The CW and MSNBC
+  are only present as local affiliates or under other names). Changes made because of it are in
+  `DECISIONS.md` ("Measured against the user's real EPGenius playlist").
 - `core`: 244 tests pass (Kotlin 2.0.21, JDK 21, compiled outside the project's Gradle build
   because the Android plugin could not be resolved).
 
@@ -59,7 +63,9 @@ To do on the Windows machine before calling it done:
 3. Emulator: mock server with `--stall-after 40`, play a channel, check "Reconnecting…" then
    picture again within ~10 s; re-select a stuck channel. Then a profile with the mock's
    `get.php` playlist: Live TV shows its channels, guide titles start with "PL ·".
-4. Fire TV: the user's real EPGenius links; time the guide import and watch memory.
+4. Fire TV: the user's real EPGenius links; time the guide import and watch memory. With
+   18,857 channels this is the largest list the app has held (the reference account had 11,130):
+   watch Live TV and guide scrolling, and the first guide import (a 175 MB parse).
 
 ### Version 1.3, 2026-09-25
 

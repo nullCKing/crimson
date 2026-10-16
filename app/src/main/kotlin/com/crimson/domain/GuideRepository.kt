@@ -97,9 +97,13 @@ class GuideRepository(private val db: CrimsonDatabase) {
      * It runs over the few hundred rows the query already returned, so the cost is invisible.
      */
     private fun excluded(row: ChannelEntity, rules: FilterRules): Boolean {
-        if (StreamingServiceDetector.isStreamingService(row.originalName)) return true
-        if (StreamingServiceDetector.isStreamingService(row.displayName)) return true
-        if (StreamingServiceDetector.isStreamingService(row.categoryName)) return true
+        // Streaming-service pseudochannels are hidden from the provider's list, but not from a
+        // playlist the viewer chose: EPGenius's has a thousand of them (HBO Max PPV, Peacock).
+        if (row.streamUrl == null) {
+            if (StreamingServiceDetector.isStreamingService(row.originalName)) return true
+            if (StreamingServiceDetector.isStreamingService(row.displayName)) return true
+            if (StreamingServiceDetector.isStreamingService(row.categoryName)) return true
+        }
         if (rules.excludePhrases.isEmpty()) return false
         val tokens = Tokenizer.tokenize(row.originalName)
         return rules.excludePhrases.any { tokens.hasPhrase(it) }

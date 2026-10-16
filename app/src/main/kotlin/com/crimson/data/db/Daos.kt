@@ -209,6 +209,10 @@ interface CategoryDao {
     @Query("DELETE FROM categories WHERE categoryId LIKE 'm3u:%'")
     suspend fun deletePlaylistCategories()
 
+    /** When the playlist was last read, or null if this profile has never read one. */
+    @Query("SELECT MAX(lastImportedAt) FROM categories WHERE categoryId LIKE 'm3u:%'")
+    suspend fun lastPlaylistImport(): Long?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsertAllBlocking(categories: List<CategoryEntity>)
 }

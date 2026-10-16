@@ -1,6 +1,8 @@
 package com.crimson.core.playlist
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.StringReader
@@ -107,6 +109,23 @@ class M3uTest {
     fun `a URL with no EXTINF is named after its last segment`() {
         val (_, entries) = parse("#EXTM3U\nhttp://h/stream/news.m3u8?token=1\n")
         assertEquals("news.m3u8", entries.single().name)
+    }
+
+    @Test
+    fun `section headings are told apart from channels`() {
+        fun e(name: String) = M3uEntry(name = name, url = "http://h/u/p/1")
+        assertTrue(e("### LOCAL NETWORKS ###").isSeparator)
+        assertTrue(e("===== SPORTS =====").isSeparator)
+        assertTrue(e("------").isSeparator)
+        assertFalse(e("NBC [Scranton] 1080p").isSeparator)
+        assertFalse(e("#1 Hits").isSeparator)
+        assertFalse(e("(US) (ESPN+ 516) | Live").isSeparator)
+    }
+
+    @Test
+    fun `tvg-chno of null is no number`() {
+        val (_, entries) = parse("#EXTM3U\n#EXTINF:0 tvg-chno=\"null\" tvg-id=\"a.us\",A\nhttp://h/live/u/p/1.ts\n")
+        assertNull(entries.single().channelNumber)
     }
 
     @Test

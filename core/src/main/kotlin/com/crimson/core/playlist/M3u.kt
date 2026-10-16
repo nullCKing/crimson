@@ -30,7 +30,18 @@ data class M3uEntry(
     /** From `#EXTVLCOPT:http-referrer=`. */
     val referrer: String? = null,
     val kind: EntryKind = EntryKind.LIVE,
-)
+) {
+    /**
+     * A section heading dressed up as a channel: `### LOCAL NETWORKS ###`, `===== SPORTS =====`.
+     * Curated playlists use these to divide a long group in players that show one flat list; they
+     * point at an arbitrary stream and are not channels.
+     */
+    val isSeparator: Boolean get() = SEPARATOR.matches(name.trim())
+
+    private companion object {
+        val SEPARATOR = Regex("""^([#=*~_\-]{2,}).*\1$|^[#=*~_\-\s]+$""")
+    }
+}
 
 /** The `#EXTM3U` line's attributes. */
 data class M3uHeader(

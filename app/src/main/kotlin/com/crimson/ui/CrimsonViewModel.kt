@@ -401,6 +401,8 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         }
         endSession()
         val session = container.activate(profile)
+        live.playlistMode = profile.usesPlaylist
+        live.reset()
         _ui.value = _ui.value.copy(profile = profile)
         startSession()
         sessionScope.launch {
@@ -414,6 +416,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 // A catalogue missing, or joined against an older title index, is brought up to
                 // date in the background; the rows refresh when it lands.
                 importLibrary()
+                refreshPlaylistIfStale()
             } else {
                 runImport(fullRefresh = true)
             }
@@ -1513,6 +1516,21 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         // Shown at once; the store catches up.
         _ui.value = _ui.value.copy(settings = _ui.value.settings.copy(videoBrightness = next))
         sessionScope.launch { container.settings.setVideoBrightness(next) }
+    }
+
+    /** Re-reads a playlist older than twelve hours without leaving the page the viewer is on. */
+    private fun refreshPlaylistIfStale() {
+        val url = container.currentProfile()?.playlistUrl?.takeIf { it.isNotBlank() } ?: return
+        val importer = container.playlistImporter() ?: return
+        sessionScope.launch {
+            if (!importer.isStale()) return@launch
+            runCatching { importer.import(url).collect { } }
+                .onFailure { Log.w(TAG, "background playlist refresh failed; keeping the current list", it) }
+                .onSuccess {
+                    refreshWindow()
+                    live.rebuild()
+                }
+        }
     }
 
     /** Reads the channel list again: the playlist's, or the provider's. */

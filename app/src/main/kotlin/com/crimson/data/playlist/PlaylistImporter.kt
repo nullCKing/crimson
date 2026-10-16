@@ -48,6 +48,10 @@ class PlaylistImporter(
     private val cacheDir: File,
 ) {
 
+    /** True when the playlist was read more than [REFRESH_AFTER_MS] ago. */
+    suspend fun isStale(now: Long = System.currentTimeMillis()): Boolean =
+        now - (db.categoryDao().lastPlaylistImport() ?: 0L) >= REFRESH_AFTER_MS
+
     fun import(playlistUrl: String): Flow<ImportProgress> = flow {
         emit(ImportProgress.ReadingCategories)
         val file = File(cacheDir, "playlist.m3u")
@@ -59,7 +63,7 @@ class PlaylistImporter(
         }
         file.delete()
         Log.i(TAG, "playlist: ${result.kept} channels in ${result.groups} groups from ${result.seen} entries " +
-            "(${result.notLive} films/series skipped, ${result.duplicates} duplicates), guide ${result.guideUrls}")
+            "(${result.notLive} films/series, ${result.duplicates} repeats and section headings skipped)")
         if (result.kept == 0) {
             throw PlaylistException(
                 if (result.seen == 0) "The playlist had no channels in it."
@@ -88,6 +92,7 @@ class PlaylistImporter(
         var kept = 0
         var notLive = 0
         var duplicates = 0
+        var separators = 0
 
         fun flush() {
             if (batch.isEmpty()) return
@@ -103,10 +108,21 @@ class PlaylistImporter(
                 notLive++
                 return@parse
             }
-            val streamId = streamIdOf(entry)
-            if (!seenIds.add(streamId)) {
-                duplicates++
+            if (entry.isSeparator) {
+                separators++
                 return@parse
+            }
+            val group = entry.group?.trim()?.ifEmpty { null } ?: UNGROUPED
+            // A stream listed in several groups (EPGenius puts CNN under "TV Guide (USA)" and
+            // "News Networks") stays in each: the first listing keeps the provider's stream id,
+            // later ones get an id of their own. The same stream twice in one group is a repeat.
+            var streamId = streamIdOf(entry)
+            if (!seenIds.add(streamId)) {
+                streamId = syntheticId(entry.url + "\u0000" + group)
+                if (!seenIds.add(streamId)) {
+                    duplicates++
+                    return@parse
+                }
             }
             // The playlist's own number when it asks for one that is free; otherwise the next
             // number in playlist order, which keeps the curator's order in the guide.
@@ -116,8 +132,6 @@ class PlaylistImporter(
                     next
                 }
             usedNumbers.add(number)
-
-            val group = entry.group?.trim()?.ifEmpty { null } ?: UNGROUPED
             groups.add(group)
             val display = NameCleaner.clean(entry.name).ifBlank { entry.name.trim() }
             val tvgId = entry.tvgId?.trim()?.ifEmpty { null }
@@ -168,7 +182,7 @@ class PlaylistImporter(
                 }
             )
         }
-        return Result(seen, kept, groups.size, notLive, duplicates, guideUrls)
+        return Result(seen, kept, groups.size, notLive, duplicates + separators, guideUrls)
     }
 
     private fun download(url: String, target: File) {
@@ -238,6 +252,13 @@ class PlaylistImporter(
         private const val SNIFF_BYTES = 1024
         const val UNGROUPED = "Channels"
 
+        /**
+         * Re-read every twelve hours, in the background. A curated playlist's event slots
+         * ("ESPN+ 516 | Bills at Jets (2026-10-19 13:00)") are named for what is on them when the
+         * file was made, so a list read once goes stale within a day.
+         */
+        const val REFRESH_AFTER_MS = 12 * 60 * 60 * 1000L
+
         fun categoryIdOf(group: String) = "m3u:$group"
 
         /**
@@ -245,10 +266,13 @@ class PlaylistImporter(
          * channel and the short-EPG fallback keep working; otherwise a stable id from the URL,
          * negative so it can never collide with a provider's.
          */
-        fun streamIdOf(entry: M3uEntry): Long {
-            XtreamUrl.parse(entry.url)?.let { return it.streamId }
+        fun streamIdOf(entry: M3uEntry): Long =
+            XtreamUrl.parse(entry.url)?.streamId ?: syntheticId(entry.url)
+
+        /** A stable negative id from [text] (FNV-1a), for links that carry no stream id. */
+        fun syntheticId(text: String): Long {
             var h = -0x340d631b7bdddcdbL // FNV-1a 64 offset basis
-            for (c in entry.url) {
+            for (c in text) {
                 h = h xor c.code.toLong()
                 h *= 0x100000001b3L
             }

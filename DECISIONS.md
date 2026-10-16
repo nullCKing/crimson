@@ -77,6 +77,26 @@ was not reachable):
   and kept when the public feeds are switched off.
 - **A playlist's own `url-tvg` fills an empty guide field**, saved on the profile where it can be
   seen and changed.
+- **Measured against the user's real EPGenius playlist** (provider "strong", host otttrex; the
+  file is never committed): 19,120 entries, every one an Xtream live `.ts` link, 171 groups,
+  17,745 `tvg-id`s present in `epg6`. What it needed:
+  - **Section headings are skipped** (`M3uEntry.isSeparator`): 204 entries like
+    `### LOCAL NETWORKS ###` point at an arbitrary stream and are not channels.
+  - **A stream listed in several groups stays in each.** 1,230 entries repeat a stream from an
+    earlier group (CNN in "TV Guide (USA)" and "News Networks"); keeping only the first emptied
+    "Sport Networks" by 124 of 298. The first listing keeps the provider's stream id, later ones
+    get an id hashed from URL and group. 59 exact repeats within one group are dropped. Result:
+    18,857 channels.
+  - **The streaming-service rule does not apply to playlist channels.** It hides Netflix/Max/
+    Peacock pseudo-channels from a provider's list, and would have hidden 1,009 of the user's
+    (HBO Max PPV, Paramount+ PPV, Peacock Channels…).
+  - **Live TV opens on "All Channels" for a playlist profile**: one row per playlist group, in the
+    playlist's order. Lineups (American Cable…) are still there; they now prefer a channel of the
+    lineup's own country, because the playlist lists ABC Australia before ABC.
+  - **The playlist is re-read every twelve hours** in the background (at sign-in and in the guide
+    refresh job): 3,861 of its entries are event slots named for what was on when the file was
+    made ("NO EVENT STREAMING", "Bills at Jets (2026-10-19 13:00)"). A failed re-read keeps the list.
+  - Expected guide load: about 224,000 programmes inside the window, roughly 70 MB of database.
 - **EPGenius's guide is big**: `epg6.xml.gz` is 22 MB, 175 MB of XML, 15,376 channels and 602,264
   programmes over ten days (checked 2026-10-16). It goes through the same pull parser as the
   provider's guide, so only programmes for channels in the playlist, inside the 2 h back / 72 h

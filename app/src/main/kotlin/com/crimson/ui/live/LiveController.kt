@@ -100,9 +100,15 @@ class LiveController(
 
     var previewsEnabled = true
 
+    /**
+     * A playlist profile opens Live TV on the playlist's own groups, in its order ("All
+     * Channels"), rather than on a built-in lineup: the curator's grouping is the point of it.
+     */
+    var playlistMode = false
+
     fun reset() {
         buildJob?.cancel(); focusJob?.cancel(); channelJob?.cancel()
-        _state.value = LiveState()
+        _state.value = LiveState(collection = if (playlistMode) LiveCollection.ALL else LiveCollection.AMERICAN_CABLE)
         _directory.value = DirectoryState()
         fetchedCategories.clear()
         byStreamId.clear()
@@ -172,7 +178,12 @@ class LiveController(
         val out = ArrayList<Pair<String, List<GuideChannel>>>()
         for (section in pkg.sections) {
             val sub = ChannelPackage(pkg.id, pkg.name, pkg.description, listOf(section))
-            val resolved = resolver.resolve(sub) { _, found -> found.filterNot { it.streamId in used }.minByOrNull { it.number } }
+            val resolved = resolver.resolve(sub) { _, found ->
+                // An American lineup takes the American copy first: a playlist lists ABC
+                // Australia and ABC under the same name, and its numbers are its own order.
+                found.filterNot { it.streamId in used }
+                    .minWithOrNull(compareBy<GuideChannel>({ if (it.country == pkgCountry(pkg)) 0 else 1 }, { it.number }))
+            }
                 .map { it.second }
             resolved.forEach { used += it.streamId }
             out += section.name to resolved
@@ -187,6 +198,13 @@ class LiveController(
             }
         }
         return out
+    }
+
+    private fun pkgCountry(pkg: ChannelPackage): Country? = when (pkg.id) {
+        "us_cable" -> Country.US
+        "jp_tv" -> Country.JP
+        "kr_tv" -> Country.KR
+        else -> null
     }
 
     /**

@@ -48,6 +48,15 @@ class EpgRefreshWorker(
                     EpgSources.forCountries(current.rules.countries.map { it.code }.toSet())
                 else emptyList()
             val profile = container.profiles.byId(session.profile.id) ?: session.profile
+            // The playlist first, so the guide is matched against today's channel list. A
+            // failure keeps the list it has.
+            if (profile.usesPlaylist) {
+                val playlist = session.playlistImporter()
+                if (playlist.isStale()) {
+                    runCatching { playlist.import(profile.playlistUrl).last() }
+                        .onFailure { Log.w(TAG, "playlist refresh failed", it) }
+                }
+            }
             val done = importer.import(
                 manualOffsetHours = current.epgOffsetHours,
                 extraSources = extras,
