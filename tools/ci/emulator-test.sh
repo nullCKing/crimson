@@ -75,15 +75,45 @@ ensure_app() {
   fi
 }
 
-# Opens a tab from the navigation bar: 0 Home, 1 TV Shows, 2 Movies, 3 Live TV, 4 Sports, 5 My List.
+# The text of the focused element (or of the first text inside it), from the accessibility tree.
+focused_text() {
+  adb shell uiautomator dump /sdcard/f.xml >/dev/null 2>&1
+  adb pull /sdcard/f.xml "$OUT/.focus.xml" >/dev/null 2>&1
+  python3 - "$OUT/.focus.xml" <<'PY'
+import sys, xml.etree.ElementTree as ET
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except Exception:
+    sys.exit(0)
+for node in root.iter("node"):
+    if node.get("focused") == "true":
+        for n in node.iter("node"):
+            t = n.get("text") or n.get("content-desc")
+            if t:
+                print(t)
+                sys.exit(0)
+        sys.exit(0)
+PY
+}
+
+# Opens a tab from the navigation bar by name, stepping along it by what has focus rather than
+# by counting presses (Left from the first tab drops to the billboard when there is one).
+TABS=("Home" "TV Shows" "Movies" "Live TV" "Sports" "My List")
 to_tab() {
   ensure_app
+  local want=${TABS[$1]} f i idx
   key DPAD_UP DPAD_UP DPAD_UP DPAD_UP DPAD_UP
   sleep 1.5                      # the navigation bar slides in
-  key DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT DPAD_LEFT
-  sleep 1
-  local i; for i in $(seq 1 "$1"); do key DPAD_RIGHT; sleep 0.6; done
-  shot "nav-before-tab-$1"
+  for i in $(seq 1 12); do
+    f=$(focused_text)
+    [ "$f" = "$want" ] && break
+    idx=-1
+    for j in "${!TABS[@]}"; do [ "${TABS[$j]}" = "$f" ] && idx=$j; done
+    if [ $idx -lt 0 ]; then key DPAD_UP; sleep 1
+    elif [ $idx -lt "$1" ]; then key DPAD_RIGHT
+    else key DPAD_LEFT; fi
+  done
+  shot "nav-before-$(echo "$want" | tr ' ' '-')"
   key DPAD_CENTER
   sleep 6
 }
@@ -206,4 +236,5 @@ echo "memory at end: $(app_mem)" >> "$LOG"
 kill $LOGCAT 2>/dev/null
 grep -E "FATAL EXCEPTION|AndroidRuntime|CrimsonVM|CrimsonPlaylist|CrimsonEpg|CrimsonPlayer|CrimsonFeed" "$OUT/logcat.txt" | grep -v "^--" | tail -150 > "$OUT/logcat-crimson.txt"
 if grep -q "FATAL EXCEPTION" "$OUT/logcat.txt"; then say "**CRASH**: see logcat-crimson.txt"; fi
+rm -f "$OUT/.focus.xml"
 say "done"
