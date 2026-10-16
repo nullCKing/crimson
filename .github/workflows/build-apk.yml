@@ -81,10 +81,10 @@ jobs:
             > secrets/keystore.properties
 
       - name: Core tests
-        run: ./gradlew :core:test --stacktrace
+        run: bash ./gradlew :core:test --stacktrace
 
       - name: Build and verify the release APK
-        run: ./gradlew release --stacktrace
+        run: bash ./gradlew release --stacktrace
 
       - name: Name the APK
         run: |
