@@ -1,0 +1,1 @@
+Network & Internet | Wi-Fi | Available networks | AndroidWifi,Connected,Wifi signal full.,Open network | AndroidWifi | Connected | Other options | Add new network | Scanning always available | Let Google's location service and other apps scan for networks, even when Wi-Fi is off
