@@ -45,7 +45,9 @@ class SportsRepository(private val http: OkHttpClient) {
             else parts.filterNotNull().flatten().distinctBy { it.id }
         }
         if (events != null) synchronized(cache) { cache[league.id] = Entry(now, events) }
-        events ?: synchronized(cache) { cache[league.id]?.events }.orEmpty()
+        // A failed fetch falls back to the last answer only while it is recent: an hour-old
+        // scoreboard shown as current is how yesterday's games stayed on screen.
+        events ?: synchronized(cache) { cache[league.id]?.takeIf { now - it.at < STALE_MS }?.events }.orEmpty()
     }
 
     private fun scoreboard(league: League, division: Division?): List<SportsEvent>? = runCatching {
@@ -76,7 +78,9 @@ class SportsRepository(private val http: OkHttpClient) {
             if (it.league.divisions.isNotEmpty() && !it.hasRankedTeam) return@filter false
             when (it.state) {
                 EventState.LIVE -> true
-                EventState.UPCOMING -> it.startMs - now < 30 * HOUR
+                // Still "upcoming" six hours after kick-off means the feed never updated it
+                // (postponed, or a stale answer); it is not worth a card.
+                EventState.UPCOMING -> it.startMs - now < 30 * HOUR && now - it.startMs < 6 * HOUR
                 EventState.FINAL -> now - it.startMs < 8 * HOUR
             }
         }
@@ -85,6 +89,8 @@ class SportsRepository(private val http: OkHttpClient) {
         private const val TAG = "CrimsonSports"
         private const val BASE = "https://site.api.espn.com/apis/site/v2/sports"
         const val CACHE_MS = 60_000L
+        /** How old a cached scoreboard may be and still stand in for a failed fetch. */
+        const val STALE_MS = 15 * 60_000L
         private const val HOUR = 3_600_000L
         /** More than a division ever plays in a week; ESPN's default page size is smaller. */
         private const val DIVISION_LIMIT = 500

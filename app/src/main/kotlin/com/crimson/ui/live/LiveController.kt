@@ -159,6 +159,23 @@ class LiveController(
         }
     }
 
+    /**
+     * Re-reads what is on for every row that has shown it, so cards do not keep last hour's
+     * programme. Called every minute while a session is open.
+     */
+    fun refreshNowPlaying() {
+        val rows = _state.value.rows.filter { row -> row.tiles.any { (it as? ChannelTile)?.nowTitle != null } }
+        if (rows.isEmpty()) return
+        scope.launch {
+            val fresh = rows.associate { row ->
+                row.id to nowPlaying(row.tiles.mapNotNull { (it as? ChannelTile)?.streamId?.let(::channel) })
+            }
+            _state.value = _state.value.copy(
+                rows = _state.value.rows.map { row -> fresh[row.id]?.let { row.copy(tiles = it) } ?: row }
+            )
+        }
+    }
+
     /** Fills in what is on for a row that has scrolled into view. */
     fun ensureNowPlaying(rowId: String) {
         val row = _state.value.rows.firstOrNull { it.id == rowId } ?: return

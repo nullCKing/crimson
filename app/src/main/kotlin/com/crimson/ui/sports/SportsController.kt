@@ -95,7 +95,7 @@ data class SportsState(
     }
 }
 
-/** The Sports page: every followed league's scoreboard, refreshed while the page is open. */
+/** The Sports page: every followed league's scoreboard, refreshed every minute while the page is open. */
 class SportsController(private val container: AppContainer) {
     lateinit var scope: CoroutineScope
 

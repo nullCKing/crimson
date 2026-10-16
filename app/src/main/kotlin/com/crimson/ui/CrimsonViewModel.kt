@@ -417,6 +417,11 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 // date in the background; the rows refresh when it lands.
                 importLibrary()
                 refreshPlaylistIfStale()
+                // A guide that never finished (the app was closed during it) is fetched now.
+                if (settings.lastEpgRefreshAt <= 0L) sessionScope.launch {
+                    libraryJob?.join()
+                    importGuide()
+                }
             } else {
                 runImport(fullRefresh = true)
             }
@@ -436,6 +441,24 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         themeSkip.scope = sessionScope
         observeSettings()
         observeCategories()
+        keepLiveDataFresh()
+    }
+
+    /**
+     * Every minute while a profile is open: scores, Home's live rows and Live TV's now-playing
+     * cards are read again. They used to be read once, when a page was first built, so a game
+     * played two days ago could still be on Home until the app was restarted. The scoreboard
+     * is cached for a minute, so this costs one request per league per minute at most.
+     */
+    private fun keepLiveDataFresh() {
+        sessionScope.launch {
+            while (true) {
+                delay(LIVE_REFRESH_MS)
+                feed.refreshLive()
+                live.refreshNowPlaying()
+                if (route == Route.Main(MainTab.SPORTS)) sports.refresh(force = true)
+            }
+        }
     }
 
     private fun endSession() {
@@ -534,38 +557,48 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             restartChannelObservation(rules)
+            // Signed in once the channels are in: if the app is closed during the guide download
+            // (a curated guide can take many minutes on a Fire TV), the next launch goes straight
+            // to Home and finishes the guide, instead of starting the whole import again.
+            container.settings.setImportCompleted(true)
             setRoot(Route.Main(MainTab.HOME))
 
-            // Guide data next; nothing on screen waits for it.
-            runCatching {
-                val settings = container.settings.settings.first()
-                _ui.value = _ui.value.copy(isRefreshingEpg = true)
-                container.xmltvImporter()?.import(
-                    manualOffsetHours = settings.epgOffsetHours,
-                    extraSources = extraSourcesFor(settings),
-                    primarySources = primaryGuides(),
-                )?.collect { progress ->
-                    when (progress) {
-                        is EpgProgress.Source -> _ui.value = _ui.value.copy(epgRefreshDetail = progress.label)
-                        is EpgProgress.Done -> container.settings.setEpgSummary(progress.report.summary())
-                        else -> Unit
-                    }
-                }
-                container.settings.setEpgRefreshedAt(System.currentTimeMillis())
-                container.settings.setImportCompleted(true)
-            }.onFailure {
-                Log.w(TAG, "guide data failed to load", it)
-                container.settings.setEpgSummary("Guide download failed: ${it.message ?: it.javaClass.simpleName}")
-                container.settings.setImportCompleted(true)
-            }
-            _ui.value = _ui.value.copy(isRefreshingEpg = false, epgRefreshDetail = null)
-            refreshWindow()
-            live.rebuild()
-
-            // The catalogue last: both it and the guide are streaming imports that write
-            // continuously, and a 1 GB stick should not be asked to run two at once.
+            // The catalogue next, so Movies and TV Shows fill in within minutes; the guide after
+            // it. Both are streaming imports that write continuously, and a 1 GB stick should not
+            // be asked to run two at once. (The guide used to go first, and with EPGenius's
+            // 175 MB guide that left Home without films or series for a very long time.)
             importLibrary()
+            libraryJob?.join()
+            importGuide()
         }
+    }
+
+    /** The guide: the playlist's guide link, the provider's, then the public feeds. */
+    private suspend fun importGuide() {
+        runCatching {
+            val settings = container.settings.settings.first()
+            _ui.value = _ui.value.copy(isRefreshingEpg = true)
+            container.xmltvImporter()?.import(
+                manualOffsetHours = settings.epgOffsetHours,
+                extraSources = extraSourcesFor(settings),
+                primarySources = primaryGuides(),
+            )?.collect { progress ->
+                when (progress) {
+                    is EpgProgress.Source -> _ui.value = _ui.value.copy(epgRefreshDetail = progress.label)
+                    is EpgProgress.Done -> container.settings.setEpgSummary(progress.report.summary())
+                    else -> Unit
+                }
+            }
+            container.settings.setEpgRefreshedAt(System.currentTimeMillis())
+            container.settings.setImportCompleted(true)
+        }.onFailure {
+            Log.w(TAG, "guide data failed to load", it)
+            container.settings.setEpgSummary("Guide download failed: ${it.message ?: it.javaClass.simpleName}")
+            container.settings.setImportCompleted(true)
+        }
+        _ui.value = _ui.value.copy(isRefreshingEpg = false, epgRefreshDetail = null)
+        refreshWindow()
+        live.rebuild()
     }
 
     /**
@@ -1562,6 +1595,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
         const val MAX_CHANNEL_DIGITS = 5
         const val PROGRESS_INTERVAL_MS = 10_000L
         const val NEXT_EPISODE_DELAY_MS = 6_000L
+        const val LIVE_REFRESH_MS = 60_000L
 
         /** Bumped whenever TitleMatcher changes what a key means; the catalogue is rebuilt. */
         const val CATALOG_KEY_VERSION = 2

@@ -1,0 +1,110 @@
+# Runs Crimson on an Android TV emulator, drives it with remote keys, and keeps a screenshot and
+# the on-screen text of every step (tools/ci/emulator-test.sh). The results are pushed to the
+# `ci-screens` branch, one folder per run, so they can be read without downloading artifacts.
+#
+# Against the mock provider by default. With the repository secrets TEST_SERVER, TEST_USER,
+# TEST_PASS (and optionally TEST_PLAYLIST), a second job runs against that real account; it
+# captures no screen that shows the login.
+name: Emulator test
+
+on:
+  push:
+    branches: [ "claude/peaceful-mendel-k4bklw" ]
+    paths-ignore: [ "**.md" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: emulator-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [ mock, real ]
+    steps:
+      - name: Real-account secrets present?
+        id: gate
+        env:
+          TEST_SERVER: ${{ secrets.TEST_SERVER }}
+        run: |
+          if [ "${{ matrix.mode }}" = real ] && [ -z "$TEST_SERVER" ]; then echo "run=false" >> "$GITHUB_OUTPUT"; else echo "run=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - name: Build the release APK (debug-signed for the emulator)
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0" "platforms;android-35" > /dev/null
+          bash ./gradlew :app:assembleRelease --stacktrace
+          ls app/build/outputs/apk/release/
+
+      - name: Mock provider
+        if: steps.gate.outputs.run == 'true' && matrix.mode == 'mock'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+          cd tools/mock-xtream
+          nohup python3 server.py --port 8080 --stall-after 40 > ../../mock.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8080/ && break; sleep 2; done
+
+      - name: Enable KVM
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on an Android TV emulator
+        if: steps.gate.outputs.run == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MODE: ${{ matrix.mode }}
+          STALL: "40"
+          REAL_SERVER: ${{ secrets.TEST_SERVER }}
+          REAL_USER: ${{ secrets.TEST_USER }}
+          REAL_PASS: ${{ secrets.TEST_PASS }}
+          REAL_PLAYLIST: ${{ secrets.TEST_PLAYLIST }}
+        with:
+          api-level: 30
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          ram-size: 2048M
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: APK=$(ls app/build/outputs/apk/release/*.apk | head -1) OUT=ci-out bash tools/ci/emulator-test.sh
+
+      - name: Publish the results to the ci-screens branch
+        if: always() && steps.gate.outputs.run == 'true'
+        run: |
+          [ -d ci-out ] || exit 0
+          cp mock.log ci-out/ 2>/dev/null || true
+          dir="runs/${GITHUB_RUN_ID}-${{ matrix.mode }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch -q origin ci-screens 2>/dev/null; then
+            git checkout -q -f -B ci-screens FETCH_HEAD
+          else
+            git checkout -q --orphan ci-screens
+            git rm -rq --cached . > /dev/null
+          fi
+          mkdir -p "$dir" && cp -r ci-out/* "$dir"/
+          git add "$dir"
+          git commit -qm "Emulator run ${GITHUB_RUN_ID} (${{ matrix.mode }}) at ${GITHUB_SHA::7}"
+          for i in 1 2 3; do git push -q origin HEAD:ci-screens && break; git pull -q --rebase origin ci-screens; done

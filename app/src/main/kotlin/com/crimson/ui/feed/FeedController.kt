@@ -129,6 +129,28 @@ class FeedController(
         FeedPage.entries.filter { plans[it] != null }.forEach { rebuild(it, keepRows = true) }
     }
 
+    /**
+     * The rows that go out of date by themselves: Live Sports and what is on now. Called every
+     * minute while a session is open, so a game that finished last night does not sit on Home
+     * until the app is restarted. Rows are replaced in place; a row with nothing left goes.
+     */
+    fun refreshLive() {
+        FeedPage.entries.filter { plans[it] != null }.forEach { page ->
+            val flow = states.getValue(page)
+            if (flow.value.rows.none { it.kind == RowKind.SPORTS || it.kind == RowKind.LIVE }) return@forEach
+            scope.launch {
+                val updated = flow.value.rows.mapNotNull { row ->
+                    when (row.kind) {
+                        RowKind.SPORTS -> sportsRow(row.id, row.title)
+                        RowKind.LIVE -> liveNow().takeIf { it.isNotEmpty() }?.let { row.copy(tiles = it.take(ROW_SIZE)) }
+                        else -> row
+                    }
+                }
+                flow.value = flow.value.copy(rows = updated)
+            }
+        }
+    }
+
     /** Only the personal rows: continue watching and My List, after the viewer watched something. */
     fun refreshPersonal() {
         FeedPage.entries.filter { plans[it] != null }.forEach { page ->

@@ -123,8 +123,19 @@ fun BrowseScreen(
     var wantHero by remember { mutableStateOf(false) }
     var focusedRow by remember { mutableIntStateOf(0) }
     val heroPlay = remember { FocusRequester() }
+    val navTab = remember { FocusRequester() }
     val restore = remember { FocusRequester() }
     val heroMode = !inRows || wantHero
+
+    /**
+     * The top of the page: the billboard's Play, or the page's tab in the navigation bar when
+     * there is no billboard. A Home with no featured title (the catalogue still importing, or an
+     * account without one) used to have nowhere to send Back or Up, so focus stayed in the rows
+     * and the navigation bar never came back.
+     */
+    fun focusTop(): Boolean =
+        (state.hero != null && runCatching { heroPlay.requestFocus() }.isSuccess) ||
+            runCatching { navTab.requestFocus() }.isSuccess
 
     // Landing on the page: back on the card the viewer left from, or on the billboard's Play with
     // the rows scrolled back to the top.
@@ -133,18 +144,22 @@ fun BrowseScreen(
         val restored = memory.inRows && memory.lastKey != null && runCatching { restore.requestFocus() }.isSuccess
         if (!restored) {
             memory.inRows = false
-            runCatching { heroPlay.requestFocus() }
+            focusTop()
             if (memory.list.firstVisibleItemIndex > 0) memory.list.scrollToItem(0)
         }
         // Once more after the page transition, when the outgoing page lets go of focus.
         kotlinx.coroutines.delay(320)
-        if (!restored && !inRows) runCatching { heroPlay.requestFocus() }
+        if (!restored && !inRows) focusTop()
         else if (restored && !inRows) runCatching { restore.requestFocus() }
     }
     LaunchedEffect(wantHero) {
         if (!wantHero) return@LaunchedEffect
+        // A frame for the navigation bar to come back into the layout before focusing it.
         withFrameNanos { }
-        runCatching { heroPlay.requestFocus() }
+        if (!focusTop()) {
+            withFrameNanos { }
+            focusTop()
+        }
         memory.list.scrollToItem(0)
         wantHero = false
     }
@@ -181,6 +196,7 @@ fun BrowseScreen(
                         onSelectTab = actions.onTab,
                         onSearch = actions.onSearch,
                         onProfile = actions.onProfile,
+                        selectedTabRequester = navTab,
                     )
                 }
             }
