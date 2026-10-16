@@ -3,6 +3,42 @@
 Every non-obvious choice, with the reason. Crimson's decisions come first; RetroGuide's follow,
 newest last, and still govern the engine Crimson inherited.
 
+## Crimson 1.4, after the first day on the TV (2026-10-16)
+
+Reported: signing in was "a nightmare" (the keyboard kept popping up, no telling which field was
+being typed into); no film or series rows on an EPGenius profile; Home stuck after scrolling to
+Live Sports (no way back to the top or the navigation bar); old games on Home until a restart;
+and a request for multi-window streaming.
+
+- **Text fields are buttons; OK opens a full-screen entry panel** (`CrimsonTextField`). Every field
+  was a live text box, and Fire OS opens its full-screen keyboard for any text box that takes
+  focus, so walking down the form opened the keyboard on each field it crossed; its Next key
+  always moved focus down, which with two fields to a row skipped Password. The panel is titled
+  with the field's name and holds one text box, so the system keyboard and the Fire TV phone app's
+  keyboard can only type into the field that was chosen. Checked on the emulator (`ci-screens`).
+- **Home: Back and Up go to the navigation bar when there is no billboard.** They used to go only
+  to the billboard's Play button; with no featured title (the catalogue not imported yet) the
+  request failed, focus stayed in the rows and the navigation bar never came back. That is the
+  "stuck" Home: a bug since the redesign, exposed by the next item.
+- **First import: channels, then films and series, then the guide.** The guide went first, and
+  with EPGenius's 175 MB guide on a Fire TV that kept Movies and TV Shows empty for a very long
+  time (they were never off). Sign-in now counts as done once the channels are in; a guide that
+  never finished is fetched at the next launch.
+- **Live data refreshes every minute** while a profile is open: Home's Live Sports and on-now
+  rows, Live TV's now-playing cards, and the Sports page. A failed scoreboard fetch no longer
+  stands in with an answer more than 15 minutes old, and an "upcoming" game six hours after its
+  start is dropped (ESPN left it unupdated).
+- **Multiview** (player menu on live TV): up to four channels in a 2x2 grid, as many as the
+  account's `max_connections` allows (read at sign-in; it used to be parsed and thrown away).
+  Window 1 is the main player, so captions, dialogue boost and the stall watchdog stay on it;
+  windows 2-4 are extra ExoPlayers created when Multiview opens and released when it closes,
+  muted unless the cursor is on them, asking for 720p at most. OK or BACK goes full screen on the
+  window under the cursor. The 2nd-generation Fire TV's decoder budget for four streams is not
+  known; if it cannot, the extra windows fall back to software decoding or stay black.
+- **An emulator in CI** (`emulator-test.yml`), because the development container has no KVM and
+  cannot reach the provider: GitHub's runners have both. The run is read back from screenshots
+  and on-screen text pushed to `ci-screens`.
+
 ## Crimson 1.4 (2026-10-16)
 
 ### Streams that buffer once and never come back

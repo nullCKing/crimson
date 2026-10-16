@@ -56,7 +56,9 @@ python tools\make-art.py                                # launcher icon and TV b
 - **Everything RetroGuide's CLAUDE.md said about the engine still holds**: don't weaken the filter
   (precision/recall 1.0 on 5,181 labelled channels), memory is the binding constraint (1 GB Fire
   Stick Lite; stream, batch, window — no `.toList()` over a provider's list), **one ExoPlayer,
-  ever** (the Live TV preview, the guide preview and full screen all share it), keep the four EPG
+  ever** (the Live TV preview, the guide preview and full screen all share it; the one exception is
+  Multiview's extra windows, `MultiViewPlayers`, capped at the account's `max_connections` and
+  released when Multiview closes), keep the four EPG
   sources in their order and the unique index on `programs(channelKey, startMs)`.
 - **Every interactive element goes through `Modifier.tvInteractive`**, and cards through
   `cardFocus`. Focus is white (ring + lift); red means "important" (primary action, live,
@@ -109,5 +111,13 @@ python tools\make-art.py                                # launcher icon and TV b
   fed by `TappingAudioSink`) and learns each show's themes by comparing episodes
   (`ThemeLearner`); the intro databases only stand in until then. Test with `make_themes.py` +
   `server.py --themes` and `-PintroDb=http://10.0.2.2:8080`.
+- **Test on the emulator in CI, not by hand.** `.github/workflows/emulator-test.yml` boots an
+  Android TV emulator on GitHub's runners, drives the app with `tools/ci/emulator-test.sh` (remote
+  keys against the mock server: a normal account, one with no catalogue, and a real account when
+  the `TEST_*` secrets exist) and pushes every step's screenshot and on-screen text to the
+  `ci-screens` branch (`git fetch origin ci-screens`). Read those before calling a UI change done.
+  `.github/workflows/build-apk.yml` publishes the APK as the `v<versionName>` release.
+- **Text fields are buttons** (`CrimsonTextField`): OK opens a full-screen panel with the one text
+  box. Never put a live text box in a form: Fire OS opens its keyboard on every one focus crosses.
 - **Never commit `secrets/`.** Crimson has its own keystore (`crimson-release.jks`) and, optionally,
   `opensubtitles.properties`.

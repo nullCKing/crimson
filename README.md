@@ -31,6 +31,7 @@ canvas-drawn guide grid — is RetroGuide's, kept and still tested. The interfac
 | **Browse by Country** | Every live category the provider has, grouped by country with flags, searchable. Countries the import never kept are read from the provider when opened and play directly. |
 | **Sports** | Scores and schedules for NFL, college football (every FBS and FCS game, with poll rankings), NBA, MLB, NHL, WNBA, college basketball (all of Division I), MLS and the big European soccer leagues, from ESPN's public scoreboard, refreshed every minute. A busy day is split into a row per league and division. Selecting a game searches Live TV for its network ("NBC" → your NBC), falling back to its other networks and then the teams. |
 | **M3U playlist and guide link** | A profile can name an M3U playlist and an XMLTV guide link, such as the pair EPGenius hands out. The playlist's channels become the Live TV lineup (its names, groups and order), and its guide is read before the provider's, matched to channels by the playlist's `tvg-id`s. Films and TV shows still come from the Xtream login. See "Using EPGenius" below. |
+| **Multiview** | While watching live TV: Menu → Multiview. Up to four channels in a grid (as many as the account's connection limit allows); the sound follows the window the cursor is on; OK on an empty window picks a channel, OK on a full one goes full screen. |
 | **Stream recovery** | A channel that stops sending is reopened within about 8 seconds (a frozen picture within 6), retried for two minutes, and re-selecting a stuck channel starts it again. |
 | **Search** | An on-screen keyboard beside results that narrow as you type, across channels, films and series. Ranking puts the exact name first ("nbc" → NBC before CNBC and MSNBC). The search survives opening a result and coming back; leaving the search page clears it. |
 
@@ -120,6 +121,24 @@ stops sending is now reopened within seconds instead of sitting on "buffering" (
 Crimson 1.4).
 
 ---
+
+## Testing without a Fire TV
+
+Every push to the working branch runs `.github/workflows/emulator-test.yml`: an Android TV emulator
+on GitHub's servers installs the release APK and `tools/ci/emulator-test.sh` drives it with remote
+keys (sign-in, Home, Live TV, a stall, Multiview, Sports, Settings), saving a screenshot and the
+on-screen text at every step to the `ci-screens` branch. It runs against the mock server twice
+(a normal account, and one with no films or series), and against a real account when these
+repository secrets exist (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+| --- | --- |
+| `TEST_SERVER` | the provider's server URL |
+| `TEST_USER`, `TEST_PASS` | the login |
+| `TEST_PLAYLIST` | optional: an M3U playlist link to use with it |
+
+The real-account run takes no screenshot of the sign-in form. `.github/workflows/build-apk.yml`
+builds, verifies and publishes the APK as the `v<version>` release.
 
 ## Run the mock Xtream server
 
