@@ -1,0 +1,9 @@
+mock-xtream: 608 films and 140 series in the on-demand catalogue
+mock-xtream: 5181 channels in 213 categories (432 expected to survive the filter)
+mock-xtream: generating test media with ffmpeg in the background
+mock-xtream: listening on http://0.0.0.0:8080  (user testuser / pass testpass)
+stalling a .ts stream after 40 s
+stalling a .ts stream after 40 s
+stalling a .ts stream after 40 s
+stalling a .ts stream after 40 s
+stalling a .ts stream after 40 s
