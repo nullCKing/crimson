@@ -234,14 +234,14 @@ def classify_with_claude(batches, cache, today):
     log(f"model: {usage['in']} input + {usage['out']} output tokens, about ${cost:.3f}")
 
 
-def pick_gemini_model(client):
+def pick_gemini_model(client, vertex):
     """The newest gemini-N-flash-lite the project can use, else the newest gemini-N-flash."""
     override = os.environ.get("GEMINI_MODEL")
     if override:
         return override
     try:
         config = {"page_size": 200}
-        if not os.environ.get("GEMINI_API_KEY"):
+        if vertex:
             config["query_base"] = True  # Vertex AI: Google's own models, not the project's tuned ones
         names = [m.name.rsplit("/", 1)[-1] for m in client.models.list(config=config)]
     except Exception as e:
@@ -279,17 +279,34 @@ def classify_with_gemini(batches, cache, today):
     class Result(BaseModel):
         events: list[Found]
 
-    if os.environ.get("GEMINI_API_KEY"):
-        # A Gemini API key (an API key bound to a service account, restricted to the Gemini API).
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    key = os.environ.get("GEMINI_API_KEY")
+    if key:
+        # An API key bound to a service account. Vertex AI first: it bills the Cloud project, so
+        # a free-trial credit pays for it (the key must allow the Vertex AI API). The Gemini API
+        # is billed separately, by AI Studio prepay.
+        routes = [("Vertex AI, API key", genai.Client(vertexai=True, api_key=key), True),
+                  ("Gemini API, API key", genai.Client(api_key=key), False)]
     else:
-        client = genai.Client(
+        routes = [("Vertex AI, ADC", genai.Client(
             vertexai=True,
             project=os.environ["GOOGLE_CLOUD_PROJECT"],
             location=os.environ.get("GOOGLE_CLOUD_LOCATION", GEMINI_LOCATION),
-        )
-    model = pick_gemini_model(client)
-    log(f"Gemini model: {model}")
+        ), True)]
+    # Vertex AI lists models only for OAuth callers; with a key, the Gemini API's list names them.
+    listed = pick_gemini_model(routes[-1][1], routes[-1][2])
+    failures = []
+    for label, client, vertex in routes:
+        model = listed
+        try:
+            client.models.generate_content(model=model, contents="Reply OK.",
+                                           config=types.GenerateContentConfig(max_output_tokens=16))
+            break
+        except Exception as e:
+            log(f"{label} with {model} refused: {str(e)[:200]}")
+            failures.append(f"{label}: {str(e)[:200]}")
+    else:
+        raise ModelUnavailable("; ".join(failures))
+    log(f"Gemini model: {model} ({label})")
     usage = {"in": 0, "out": 0, "think": 0}
     thinking = {"on": True}
 
@@ -472,8 +489,7 @@ def main():
         batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
         try:
             if provider == "gemini":
-                via = "API key" if os.environ.get("GEMINI_API_KEY") else "Vertex AI, ADC"
-                log(f"classifying {len(todo)} titles with Gemini ({via}) in {len(batches)} batches")
+                log(f"classifying {len(todo)} titles with Gemini in {len(batches)} batches")
                 classify_with_gemini(batches, cache, today)
             elif provider == "claude":
                 log(f"classifying {len(todo)} titles with {MODEL} in {len(batches)} batches")

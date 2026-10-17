@@ -3,8 +3,10 @@
 # which the app downloads.
 #
 # Gemini classifies the guide's titles. Repository secrets, either:
-#   GEMINI_API_KEY     a Gemini API key (an API key bound to a service account, restricted to the
-#                      Gemini API, from the Cloud console's Credentials page)
+#   GEMINI_API_KEY     an API key bound to a service account (Cloud console > Credentials). Tried
+#                      on Vertex AI first (billed to the project; trial credit applies; the key must
+#                      allow the Vertex AI API and the account needs Vertex AI User), then on the
+#                      Gemini API (billed by AI Studio prepay).
 # or, for Vertex AI with Application Default Credentials:
 #   GCP_PROJECT        the Google Cloud project ID
 #   GCP_ADC_JSON       the contents of the ADC file Google's setup script writes

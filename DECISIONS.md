@@ -40,7 +40,11 @@ competition), without soccer, found by a cheap LLM reading the guide.
   for something cheaper than Haiku's $0.20 first pass. `find_events.py` uses Gemini when
   `GEMINI_API_KEY` is set (an API key bound to a service account, restricted to the Gemini API),
   or Vertex AI through Application Default Credentials when `GCP_PROJECT` and `GCP_ADC_JSON` are
-  set. It picks the newest `gemini-N-flash-lite` from the model list, with the same prompt,
+  set. With a key it tries Vertex AI first (express mode), then the Gemini API. Vertex AI is
+  billed to the Cloud project, so a free-trial credit pays for it. The Gemini API (AI Studio) is
+  billed by its own prepay, which the trial credit does not cover: with no prepay the key got
+  "402 prepayment credits are depleted". The key must allow the Vertex AI API for the first route.
+  It picks the newest `gemini-N-flash-lite` from the model list, with the same prompt,
   Pydantic schema and low thinking level. Without either, it uses `ANTHROPIC_API_KEY`, and keyword
   rules without that. `--prefilter` sends only titles marked live or naming an event (about a
   seventh); the rest are settled as "not an event" without the model.
