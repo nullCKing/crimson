@@ -3,6 +3,42 @@
 Every non-obvious choice, with the reason. Crimson's decisions come first; RetroGuide's follow,
 newest last, and still govern the engine Crimson inherited.
 
+## Sports > Extra: live events found in the guide (2026-10-17)
+
+Asked for: the odd live events buried in thousands of channels (a wrestling card on a local
+station, high school football, sumo, medieval combat, anything that is a strange live
+competition), without soccer, found by a cheap LLM reading the guide.
+
+- **Classified once, on GitHub, not on the TV.** `.github/workflows/live-events.yml` runs
+  `tools/events/find_events.py` every six hours: it reads EPGenius's `epg6.xml.gz` (optionally only
+  the channels in `TEST_PLAYLIST`), keeps the next 72 hours, reduces it to distinct titles and asks
+  Claude Haiku 5.5 which are events. The result is the `events` release's `events.json.gz`, which
+  every TV downloads. No API key on the device, one bill for the household, and a Fire TV never
+  parses the guide twice.
+- **Haiku, because the job is a judgement per title, not reasoning.** Measured on the real guide
+  for the user's playlist: 73,585 programmes in 72 hours, 31,891 distinct titles. At $0.10 per
+  million input tokens that is about $0.20 for a first full pass; a verdict cache keyed on title
+  and description (kept 21 days, stored beside the events file) means later runs send only new
+  titles, a few cents a day. `effort: low`, structured output (`messages.parse` with a Pydantic
+  schema), batches of 120.
+- **What counts** is in the prompt: coverage of an event happening at broadcast time, strange and
+  obscure by preference; not news, talk, pregame/postgame, highlights, replays and classics,
+  documentaries, produced reality competitions, or generic filler. **Soccer is excluded** twice,
+  by the prompt and by a league-name filter on the output (it keeps Premier League Darts). Big
+  leagues are kept but marked `mainstream`, and the Extra tab hides them (the scoreboard tabs
+  already have them).
+- **Keyword rules stand in without a key**, so the pipeline and the tab work before
+  `ANTHROPIC_API_KEY` is added; they find less and admit more noise (on the real guide they
+  flagged "College Football Scoreboard"), and their verdicts are not cached, so the first run with
+  a key classifies everything properly.
+- **Events attach by XMLTV channel id**, a playlist channel's `tvg-id`, exactly as the guide does.
+  A channel listed in several playlist groups shows the event once (lowest number), and the same
+  event on several channels shows once. Japanese and Korean events appear only if the playlist has
+  those channels; the Ganja playlist has none (its ids are US, UK, Canada, Australia, NZ and a few
+  others).
+- **The schedule runs only from the default branch** (GitHub's rule). Until the workflow is on
+  `master`, it runs on pushes to the working branch and by hand.
+
 ## Crimson 1.4, after the first day on the TV (2026-10-16)
 
 Reported: signing in was "a nightmare" (the keyboard kept popping up, no telling which field was

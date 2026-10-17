@@ -119,5 +119,9 @@ python tools\make-art.py                                # launcher icon and TV b
   `.github/workflows/build-apk.yml` publishes the APK as the `v<versionName>` release.
 - **Text fields are buttons** (`CrimsonTextField`): OK opens a full-screen panel with the one text
   box. Never put a live text box in a form: Fire OS opens its keyboard on every one focus crosses.
+- **Sports › Extra comes from a GitHub job, not the device.** `tools/events/find_events.py` (Claude
+  Haiku over EPGenius's guide, keyword rules without `ANTHROPIC_API_KEY`) publishes the `events`
+  release's `events.json.gz`; `ExtraEventsRepository` downloads it and keeps events on the
+  profile's channels (by `tvg-id`). Change what counts in the script's prompt, not in the app.
 - **Never commit `secrets/`.** Crimson has its own keystore (`crimson-release.jks`) and, optionally,
   `opensubtitles.properties`.

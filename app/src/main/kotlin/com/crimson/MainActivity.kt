@@ -256,6 +256,7 @@ private fun CrimsonRoot(onExit: () -> Unit) {
                                     onLeague = vm.sports::selectLeague,
                                     onGame = { vm.openTile(it) },
                                     onRefresh = { vm.sports.refresh(force = true) },
+                                    onExtra = vm.sports::selectExtra,
                                 )
                             },
                         )

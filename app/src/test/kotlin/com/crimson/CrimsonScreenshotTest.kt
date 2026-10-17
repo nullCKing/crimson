@@ -231,7 +231,7 @@ class CrimsonScreenshotTest {
                 updatedAt = now,
             ),
             avatar = 2,
-            actions = SportsActions({}, {}, {}, {}, {}, {}),
+            actions = SportsActions({}, {}, {}, {}, {}, {}, {}),
         )
     }
 

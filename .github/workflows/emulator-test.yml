@@ -52,7 +52,8 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0" "platforms;android-35" > /dev/null
-          bash ./gradlew :app:assembleRelease --stacktrace
+          eventsUrl=""; [ "${{ matrix.mode }}" != real ] && eventsUrl="-PeventsUrl=http://10.0.2.2:8080/events.json.gz"
+          bash ./gradlew :app:assembleRelease $eventsUrl --stacktrace
           ls app/build/outputs/apk/release/
 
       - name: Mock provider

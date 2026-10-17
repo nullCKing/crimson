@@ -61,6 +61,7 @@ class AppContainer(context: Context) {
 
     val profiles = ProfileStore(appContext)
     val sports = SportsRepository(httpClient)
+    val extraEvents = com.crimson.data.sports.ExtraEventsRepository(httpClient)
 
     val imageLoader: coil.ImageLoader by lazy {
         coil.ImageLoader.Builder(appContext)

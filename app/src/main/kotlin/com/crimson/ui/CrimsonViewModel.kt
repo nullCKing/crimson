@@ -106,7 +106,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
     val feed = FeedController(container, info) { liveNowTiles() }
     val details = DetailsController(container, info)
     val search = SearchController(container, { _guide.value.allChannels }) { live.nowPlaying(it) }
-    val sports = SportsController(container)
+    val sports = SportsController(container) { _guide.value.allChannels.groupBy { it.channelKey } }
     val captions = com.crimson.ui.player.CaptionsController(container.player, container.subtitles)
     val themeSkip = com.crimson.ui.player.ThemeSkipController(container.player, container.themeSkips)
     val multiView = com.crimson.ui.player.MultiViewController(
@@ -321,6 +321,7 @@ class CrimsonViewModel(app: Application) : AndroidViewModel(app) {
                 val terms = BroadcastSearch.termsFor(tile.event)
                 openSearch(terms.first(), SearchScope.LIVE, terms.drop(1))
             }
+            is com.crimson.ui.components.EventTile -> live.channel(tile.streamId)?.let { tuneAndWatch(it) }
         }
     }
 

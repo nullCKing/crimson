@@ -222,6 +222,19 @@ say "## Sports"
 to_tab 4
 sleep 4
 shot sports
+say "## Sports > Extra"
+key DPAD_DOWN DPAD_UP        # onto the chips (All Sports has focus first)
+key DPAD_RIGHT DPAD_CENTER
+sleep 6
+shot sports-extra
+key DPAD_DOWN
+sleep 2
+shot extra-card-focused
+key DPAD_CENTER
+sleep 8
+shot extra-watching
+key BACK
+sleep 3
 
 say "## Settings (guide summary)"
 ensure_app

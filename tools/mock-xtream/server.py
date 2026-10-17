@@ -237,6 +237,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.handle_playlist(params)
             elif parsed.path == "/epg.xml.gz":
                 self.handle_playlist_guide()
+            elif parsed.path == "/events.json.gz":
+                self.handle_events()
             elif parsed.path.startswith("/movie/") or parsed.path.startswith("/series/"):
                 self.handle_film(parsed.path)
             elif parsed.path.startswith("/subtitles/"):
@@ -385,6 +387,35 @@ class Handler(BaseHTTPRequestHandler):
                 tvg_id, c["name"], c["stream_icon"] or "", names.get(c["category_id"], ""), c["name"]))
             out.append("http://%s/live/%s/%s/%d.ts" % (host, USERNAME, PASSWORD, c["stream_id"]))
         self._text("\n".join(out) + "\n", content_type="audio/x-mpegurl")
+
+    def handle_events(self):
+        """
+        A stand-in for the events file .github/workflows/live-events.yml publishes: a dozen odd
+        live events on the first channels, under both the playlist's ids and the provider's.
+        """
+        now = int(time.time() * 1000)
+        hour = 3_600_000
+        kinds = [
+            ("Pro Wrestling", "AEW Collision"), ("Rodeo", "PBR Team Series: Maverick Days"),
+            ("Sumo", "Grand Sumo: Aki Basho, Day 12"), ("High School Football", "Bend at Summit"),
+            ("Bowling", "PBA Tour Finals"), ("Strongman", "World's Strongest Man: Final"),
+            ("Darts", "Premier League Darts: Night 5"), ("Medieval Combat", "Buhurt League: Team Melee"),
+            ("Lumberjack", "STIHL Timbersports Championship"), ("Spelling Bee", "Regional Spelling Bee Final"),
+            ("Drone Racing", "DRL Championship Heat 3"), ("Dog Show", "Herding Trials: National Final"),
+        ]
+        with_ids = [c for c in _catalog.channels if c["epg_channel_id"]][:len(kinds)]
+        events = []
+        for n, (c, (kind, title)) in enumerate(zip(with_ids, kinds)):
+            start = now - hour // 2 + (n // 3) * 8 * hour   # three on now, the rest later and tomorrow
+            for cid in ("pl-" + c["epg_channel_id"], c["epg_channel_id"]):
+                events.append({"c": cid, "s": start, "e": start + 2 * hour, "t": title, "k": kind,
+                               "l": True, "m": False, "d": "A mock event for the Extra tab."})
+        body = gzip.compress(json.dumps({"generated": now, "model": "mock", "events": events}).encode("utf-8"))
+        self.send_response(200)
+        self.send_header("Content-Type", "application/gzip")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def handle_playlist_guide(self):
         """The playlist's guide: the provider's listings under the playlist's ids, gzipped."""

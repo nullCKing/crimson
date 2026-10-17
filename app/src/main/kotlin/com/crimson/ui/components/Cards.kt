@@ -318,6 +318,81 @@ fun GameCard(
     }
 }
 
+/**
+ * An event card, the size of a game card: what kind of event, its name, when, and the channel.
+ * Selecting it tunes that channel.
+ */
+@Composable
+fun EventCard(
+    tile: EventTile,
+    nowMs: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onFocus: (Boolean) -> Unit = {},
+    focusRequester: FocusRequester? = null,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val event = tile.event
+    val on = event.isOn(nowMs)
+    Column(
+        modifier = modifier
+            .width(CardSize.GameWidth)
+            .height(CardSize.GameHeight)
+            .cardInteraction(onClick, onFocus, focusRequester, focused, { focused = it }, scale = 1.06f)
+            .background(Brush.linearGradient(listOf(Crimson.SurfaceRaised, Crimson.Surface)), CardShape)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                event.kind.uppercase(),
+                style = CrimsonType.Overline.copy(color = Crimson.TextSecondary, fontSize = 9.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Spacer(Modifier.weight(1f))
+            if (on) {
+                Text(
+                    "until " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(event.endMs)),
+                    style = CrimsonType.Caption.copy(color = Crimson.TextPrimary, fontSize = 10.sp),
+                    maxLines = 1,
+                )
+                if (event.live) {
+                    Spacer(Modifier.width(6.dp))
+                    LiveBadge(small = true)
+                }
+            } else {
+                Text(upcomingLabel(event.startMs, nowMs), style = CrimsonType.Caption.copy(color = Crimson.TextPrimary, fontSize = 10.sp), maxLines = 1)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            event.title,
+            style = CrimsonType.Label.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (on) {
+            Spacer(Modifier.height(6.dp))
+            ProgressLine(((nowMs - event.startMs).toFloat() / (event.endMs - event.startMs)).coerceIn(0f, 1f), height = 2.dp)
+        }
+        Spacer(Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(width = 26.dp, height = 16.dp), contentAlignment = Alignment.Center) {
+                if (!tile.logo.isNullOrBlank()) LogoImage(tile.logo, tile.channelName, Modifier.fillMaxSize())
+                else Icon(CrimsonIcons.Tv, null, tint = if (focused) Color.White else Crimson.TextTertiary, modifier = Modifier.size(12.dp))
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                (if (tile.channelNumber > 0) "${tile.channelNumber}  " else "") + tile.channelName,
+                style = CrimsonType.Caption.copy(color = if (focused) Color.White else Crimson.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun TeamLine(team: Competitor?, state: EventState) {
     if (team == null) return
@@ -452,6 +527,7 @@ fun TileCard(
         is ContinueTile -> ContinueCard(tile, onClick, modifier, onFocus, focusRequester)
         is ChannelTile -> LiveCard(tile, nowMs, onClick, modifier, width = width ?: CardSize.LiveWidth, onFocus = onFocus, focusRequester = focusRequester)
         is GameTile -> GameCard(tile, onClick, modifier, onFocus, focusRequester)
+        is EventTile -> EventCard(tile, nowMs, onClick, modifier, onFocus, focusRequester)
     }
 }
 

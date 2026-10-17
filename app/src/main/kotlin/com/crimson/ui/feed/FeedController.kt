@@ -415,6 +415,15 @@ class FeedController(
                     tile = tile,
                 )
             }
+            is com.crimson.ui.components.EventTile -> _spotlight.value = Spotlight(
+                key = tile.key,
+                overline = tile.event.kind.uppercase() + " · " + tile.channelName.uppercase(),
+                title = tile.event.title,
+                description = tile.event.description.ifBlank { null },
+                isLive = tile.event.isOn(System.currentTimeMillis()) && tile.event.live,
+                logo = tile.logo,
+                tile = tile,
+            )
         }
     }
 

@@ -47,6 +47,7 @@ class SportsActions(
     val onLeague: (League?) -> Unit,
     val onGame: (Tile) -> Unit,
     val onRefresh: () -> Unit,
+    val onExtra: () -> Unit = {},
 )
 
 /**
@@ -70,7 +71,12 @@ fun SportsScreen(state: SportsState, avatar: Int, actions: SportsActions) {
         Column(Modifier.fillMaxSize()) {
             TopNav(MainTab.SPORTS, avatar, actions.onTab, actions.onSearch, actions.onProfile)
             Row(Modifier.padding(start = Crimson.ScreenPadding, top = 8.dp, end = Crimson.ScreenPadding), verticalAlignment = Alignment.Bottom) {
-                PageHeader("Sports", "Live scores and what's on today. Select a game to find the channel showing it.", icon = CrimsonIcons.Trophy)
+                PageHeader(
+                    "Sports",
+                    if (state.extra) "Live events found in your channels' listings: wrestling, rodeo, high school games and more. Select one to watch."
+                    else "Live scores and what's on today. Select a game to find the channel showing it.",
+                    icon = CrimsonIcons.Trophy,
+                )
                 Spacer(Modifier.weight(1f))
                 if (state.updatedAt > 0) {
                     Text(
@@ -84,7 +90,8 @@ fun SportsScreen(state: SportsState, avatar: Int, actions: SportsActions) {
                 contentPadding = PaddingValues(horizontal = Crimson.ScreenPadding, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item { Chip("All Sports", selected = state.league == null, onClick = { actions.onLeague(null) }, focusRequester = firstChip) }
+                item { Chip("All Sports", selected = state.league == null && !state.extra, onClick = { actions.onLeague(null) }, focusRequester = firstChip) }
+                item { Chip("Extra", selected = state.extra, onClick = actions.onExtra) }
                 items(state.leaguesWithGames, key = { it.id }) { league ->
                     Chip(league.label, selected = state.league?.id == league.id, onClick = { actions.onLeague(league) })
                 }
@@ -93,6 +100,14 @@ fun SportsScreen(state: SportsState, avatar: Int, actions: SportsActions) {
             when {
                 rows.isEmpty() && state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                     EmptyState("Checking the scoreboard", "Fetching today's games…", busy = true)
+                }
+                rows.isEmpty() && state.extra -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                    EmptyState(
+                        "No extra events found",
+                        if (!state.extraLoaded) "Looking through the listings…"
+                        else "Nothing unusual is listed on your channels in the next three days, or the event list could not be reached. It is checked again every few minutes.",
+                        busy = !state.extraLoaded,
+                    )
                 }
                 rows.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                     EmptyState(

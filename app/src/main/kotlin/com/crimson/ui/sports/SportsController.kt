@@ -7,6 +7,9 @@ import com.crimson.core.sports.Leagues
 import com.crimson.core.sports.SportsEvent
 import com.crimson.data.sports.SportsRepository
 import com.crimson.ui.components.FeedRow
+import com.crimson.core.sports.ExtraEventRows
+import com.crimson.domain.GuideChannel
+import com.crimson.ui.components.EventTile
 import com.crimson.ui.components.GameTile
 import com.crimson.ui.components.RowKind
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +29,11 @@ data class SportsState(
     val loading: Boolean = true,
     val updatedAt: Long = 0L,
     val failed: Boolean = false,
+    /** The Extra tab is showing: events found in the guide rather than the scoreboard. */
+    val extra: Boolean = false,
+    /** Events found in the guide that are on this profile's channels. */
+    val extraEvents: List<EventTile> = emptyList(),
+    val extraLoaded: Boolean = false,
 ) {
     /**
      * Grouped the way a scores page reads: live, then by day, then recent results. A group too
@@ -33,48 +41,68 @@ data class SportsState(
      * per league and division; so does every group when one college league is picked.
      */
     val rows: List<FeedRow>
-        get() {
-            val now = System.currentTimeMillis()
-            val shown = events.filter { league == null || it.league.id == league.id }
-            val ranked = SportsRepository.rank(shown, now)
-            val out = ArrayList<FeedRow>()
-            fun add(id: String, title: String, games: List<SportsEvent>, order: Comparator<SportsEvent>?) {
-                if (games.isEmpty()) return
-                val split = games.size > SPLIT_OVER || league?.divisions?.isNotEmpty() == true
-                val sections = if (split) games.groupBy(::sectionOf).entries.sortedBy { sectionOrder(it.value.first()) }.map { it.key to it.value }
-                else listOf("" to games)
-                for ((section, list) in sections) {
-                    val sorted = if (order != null) list.sortedWith(order) else list
-                    out += FeedRow(
-                        if (section.isEmpty()) id else "${id}_$section",
-                        if (section.isEmpty()) title else "$title · $section",
-                        RowKind.SPORTS,
-                        sorted.map(::GameTile),
-                        subtitle = if (list.size == 1) "1 game" else "${list.size} games",
-                    )
-                }
-            }
-            add("sports_live", "Live Now", ranked.filter { it.state == EventState.LIVE }, null)
-            val dayFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
-            val zone = TimeZone.getDefault()
-            fun dayOf(ms: Long) = Math.floorDiv(ms + zone.getOffset(ms), DAY)
-            val today = dayOf(now)
-            // Kick-off order; at the same kick-off, a ranked team's game first.
-            val byStart = compareBy<SportsEvent>({ it.startMs }, { if (it.hasRankedTeam) 0 else 1 })
-            ranked.filter { it.state == EventState.UPCOMING && it.startMs - now < 8 * DAY }
-                .groupBy { dayOf(it.startMs) }
-                .toSortedMap()
-                .forEach { (day, games) ->
-                    val title = when (day - today) {
+        get() = if (extra) extraRows(System.currentTimeMillis()) else scoreRows()
+
+    /** On now, then later today, tomorrow and on: the Extra tab. */
+    fun extraRows(now: Long): List<FeedRow> {
+        val zone = TimeZone.getDefault()
+        val dayFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+        return ExtraEventRows.group(extraEvents, { it.event }, now) { zone.getOffset(it).toLong() }
+            .map { (group, tiles) ->
+                val (id, title) = when (group) {
+                    ExtraEventRows.Group.OnNow -> "extra_now" to "On Now"
+                    is ExtraEventRows.Group.Day -> "extra_day_${group.daysAhead}" to when (group.daysAhead) {
                         0L -> "Later Today"
                         1L -> "Tomorrow"
-                        else -> dayFormat.format(Date(games.first().startMs))
+                        else -> dayFormat.format(Date(group.firstStartMs))
                     }
-                    add("sports_day_$day", title, games, byStart)
                 }
-            add("sports_final", "Final Scores", ranked.filter { it.state == EventState.FINAL && now - it.startMs < 2 * DAY }, null)
-            return out
+                FeedRow(id, title, RowKind.SPORTS, tiles, subtitle = if (tiles.size == 1) "1 event" else "${tiles.size} events")
+            }
+    }
+
+    private fun scoreRows(): List<FeedRow> {
+        val now = System.currentTimeMillis()
+        val shown = events.filter { league == null || it.league.id == league.id }
+        val ranked = SportsRepository.rank(shown, now)
+        val out = ArrayList<FeedRow>()
+        fun add(id: String, title: String, games: List<SportsEvent>, order: Comparator<SportsEvent>?) {
+            if (games.isEmpty()) return
+            val split = games.size > SPLIT_OVER || league?.divisions?.isNotEmpty() == true
+            val sections = if (split) games.groupBy(::sectionOf).entries.sortedBy { sectionOrder(it.value.first()) }.map { it.key to it.value }
+            else listOf("" to games)
+            for ((section, list) in sections) {
+                val sorted = if (order != null) list.sortedWith(order) else list
+                out += FeedRow(
+                    if (section.isEmpty()) id else "${id}_$section",
+                    if (section.isEmpty()) title else "$title · $section",
+                    RowKind.SPORTS,
+                    sorted.map(::GameTile),
+                    subtitle = if (list.size == 1) "1 game" else "${list.size} games",
+                )
+            }
         }
+        add("sports_live", "Live Now", ranked.filter { it.state == EventState.LIVE }, null)
+        val dayFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+        val zone = TimeZone.getDefault()
+        fun dayOf(ms: Long) = Math.floorDiv(ms + zone.getOffset(ms), DAY)
+        val today = dayOf(now)
+        // Kick-off order; at the same kick-off, a ranked team's game first.
+        val byStart = compareBy<SportsEvent>({ it.startMs }, { if (it.hasRankedTeam) 0 else 1 })
+        ranked.filter { it.state == EventState.UPCOMING && it.startMs - now < 8 * DAY }
+            .groupBy { dayOf(it.startMs) }
+            .toSortedMap()
+            .forEach { (day, games) ->
+                val title = when (day - today) {
+                    0L -> "Later Today"
+                    1L -> "Tomorrow"
+                    else -> dayFormat.format(Date(games.first().startMs))
+                }
+                add("sports_day_$day", title, games, byStart)
+            }
+        add("sports_final", "Final Scores", ranked.filter { it.state == EventState.FINAL && now - it.startMs < 2 * DAY }, null)
+        return out
+    }
 
     val leaguesWithGames: List<League>
         get() = Leagues.ALL.filter { l -> events.any { it.league.id == l.id } }
@@ -95,8 +123,15 @@ data class SportsState(
     }
 }
 
-/** The Sports page: every followed league's scoreboard, refreshed every minute while the page is open. */
-class SportsController(private val container: AppContainer) {
+/**
+ * The Sports page: every followed league's scoreboard, refreshed every minute while the page is
+ * open, and the Extra tab's events found in the guide.
+ */
+class SportsController(
+    private val container: AppContainer,
+    /** The profile's channels by guide key (a playlist channel's `tvg-id`). */
+    private val channelsByKey: () -> Map<String, List<GuideChannel>>,
+) {
     lateinit var scope: CoroutineScope
 
     private val _state = MutableStateFlow(SportsState())
@@ -113,16 +148,38 @@ class SportsController(private val container: AppContainer) {
         job = scope.launch {
             if (_state.value.events.isEmpty()) _state.value = _state.value.copy(loading = true)
             val events = runCatching { container.sports.all(force = force) }.getOrDefault(emptyList())
+            val extra = runCatching { extraTiles(container.extraEvents.events()) }.getOrDefault(_state.value.extraEvents)
             _state.value = _state.value.copy(
                 events = events,
                 loading = false,
                 failed = events.isEmpty(),
                 updatedAt = System.currentTimeMillis(),
+                extraEvents = extra,
+                extraLoaded = true,
             )
         }
     }
 
+    /**
+     * The events on this profile's channels, one card per event: a channel listed in several
+     * playlist groups is the lowest-numbered copy, and the same event on several channels shows
+     * once, on the first.
+     */
+    private fun extraTiles(events: List<com.crimson.core.sports.ExtraEvent>): List<EventTile> {
+        val channels = channelsByKey()
+        val seen = HashSet<String>()
+        return events.mapNotNull { event ->
+            val channel = channels[event.channelId]?.minByOrNull { it.number } ?: return@mapNotNull null
+            if (!seen.add(event.title.lowercase() + "|" + event.startMs)) return@mapNotNull null
+            EventTile(event, channel.streamId, channel.name, channel.number, channel.logoUrl)
+        }
+    }
+
     fun selectLeague(league: League?) {
-        _state.value = _state.value.copy(league = league)
+        _state.value = _state.value.copy(league = league, extra = false)
+    }
+
+    fun selectExtra() {
+        _state.value = _state.value.copy(extra = true, league = null)
     }
 }

@@ -1,0 +1,69 @@
+# Finds the live events in EPGenius's guide for the Sports page's Extra tab
+# (tools/events/find_events.py) and publishes them as the `events` release's events.json.gz,
+# which the app downloads.
+#
+# Repository secrets:
+#   ANTHROPIC_API_KEY  Claude Haiku classifies the guide's titles (cents a day; only titles not
+#                      seen before are sent). Without it, keyword rules stand in.
+#   TEST_PLAYLIST      optional: the M3U playlist link, so only its channels are considered.
+#
+# The schedule runs only from the default branch (GitHub's rule); until this file is there, it
+# runs on pushes to the working branch and by hand.
+name: Live events
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  push:
+    branches: [ "claude/peaceful-mendel-k4bklw" ]
+    paths: [ "tools/events/**", ".github/workflows/live-events.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-events
+  cancel-in-progress: false
+
+env:
+  GUIDE: https://github.com/ferteque/Curated-M3U-Repository/raw/refs/heads/main/epg6.xml.gz
+
+jobs:
+  events:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/events
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the Anthropic SDK
+        run: pip install --quiet anthropic pydantic
+
+      - name: Last run's verdicts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download events -p cache.json.gz -R "$GITHUB_REPOSITORY" || echo "no cache yet"
+
+      - name: Find the events
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PLAYLIST: ${{ secrets.TEST_PLAYLIST }}
+        run: |
+          args=(); [ -n "$PLAYLIST" ] && args=(--playlist "$PLAYLIST")
+          python tools/events/find_events.py --guide "$GUIDE" "${args[@]}" --out events.json.gz --cache cache.json.gz
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view events -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create events -R "$GITHUB_REPOSITORY" --title "Live events data" --latest=false --prerelease \
+              --notes "Live events found in the guide, refreshed every six hours by .github/workflows/live-events.yml. Read by the app's Sports > Extra tab."
+          fi
+          gh release upload events events.json.gz cache.json.gz --clobber -R "$GITHUB_REPOSITORY"

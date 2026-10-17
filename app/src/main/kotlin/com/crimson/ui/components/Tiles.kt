@@ -84,6 +84,20 @@ data class GameTile(val event: SportsEvent) : Tile {
     override val key: String get() = "G:${event.league.id}:${event.id}"
 }
 
+/**
+ * A live event found in the guide (wrestling on a local station, a rodeo, a high school game), on
+ * one of the viewer's channels: the Sports page's Extra tab. Selecting it tunes the channel.
+ */
+data class EventTile(
+    val event: com.crimson.core.sports.ExtraEvent,
+    val streamId: Long,
+    val channelName: String,
+    val channelNumber: Int,
+    val logo: String?,
+) : Tile {
+    override val key: String get() = "E:${event.channelId}:${event.startMs}:$streamId"
+}
+
 /** How a row lays its tiles out. */
 enum class RowKind { POSTER, TOP10, CONTINUE, LIVE, SPORTS }
 

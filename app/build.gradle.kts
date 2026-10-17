@@ -58,6 +58,14 @@ android {
         // debug build at the mock server's stand-ins for both (tools/mock-xtream, --themes).
         buildConfigField("String", "INTRODB_URL", "\"https://api.introdb.app\"")
         buildConfigField("String", "THEINTRODB_URL", "\"https://api.theintrodb.org\"")
+        // The live events the Sports page's Extra tab shows, published by
+        // .github/workflows/live-events.yml. -PeventsUrl=http://10.0.2.2:8080/events.json.gz points
+        // a build at the mock server's (the emulator test does).
+        buildConfigField(
+            "String", "EVENTS_URL",
+            "\"" + ((project.findProperty("eventsUrl") as String?)
+                ?: "https://github.com/nullCKing/crimson/releases/download/events/events.json.gz") + "\"",
+        )
     }
 
     signingConfigs {
