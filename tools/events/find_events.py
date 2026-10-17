@@ -191,14 +191,21 @@ def classify_with_claude(batches, cache, today):
             f"{n}. {t} | {d[:160] or '-'} | {ch or '-'} | live: {'yes' if lv else 'no'}"
             for n, (k, t, d, ch, lv) in enumerate(batch)
         ]
-        response = client.messages.parse(
-            model=MODEL,
-            max_tokens=8000,
-            system=SYSTEM,
-            output_config={"effort": "low"},
-            messages=[{"role": "user", "content": "\n".join(lines)}],
-            output_format=Result,
-        )
+        try:
+            response = client.messages.parse(
+                model=MODEL,
+                max_tokens=8000,
+                system=SYSTEM,
+                output_config={"effort": "low"},
+                messages=[{"role": "user", "content": "\n".join(lines)}],
+                output_format=Result,
+            )
+        except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
+            raise ModelUnavailable(str(e)[:300]) from e
+        except anthropic.BadRequestError as e:
+            if FATAL.search(str(e)):
+                raise ModelUnavailable(str(e)[:300]) from e
+            raise
         usage["in"] += response.usage.input_tokens
         usage["out"] += response.usage.output_tokens
         if response.stop_reason == "max_tokens" and len(batch) > 1:
@@ -248,6 +255,15 @@ def pick_gemini_model(client):
     return newest(r"gemini-\d+(\.\d+)?-flash-lite") or newest(r"gemini-\d+(\.\d+)?-flash") or GEMINI_FALLBACK
 
 
+class ModelUnavailable(Exception):
+    """The model can't be used at all on this run (no credit, bad key): fall back to the rules."""
+
+
+# Errors no retry fixes: billing (402, "prepayment credits are depleted"), a bad or refused key.
+FATAL = re.compile(r"\b(401|402|403)\b|PERMISSION_DENIED|UNAUTHENTICATED|prepayment|billing|API key not valid|"
+                   r"credit balance", re.I)
+
+
 def classify_with_gemini(batches, cache, today):
     """The same question and answer shape as Claude's, asked of Gemini on Vertex AI through ADC."""
     from google import genai
@@ -295,6 +311,8 @@ def classify_with_gemini(batches, cache, today):
                     model=model, contents="\n".join(lines), config=types.GenerateContentConfig(**config))
             except Exception as e:
                 text = str(e)
+                if FATAL.search(text):
+                    raise ModelUnavailable(text[:300]) from e
                 if thinking["on"] and "thinking" in text.lower() and ("400" in text or "INVALID_ARGUMENT" in text):
                     thinking["on"] = False  # a model without thinking levels: ask without one
                     continue
@@ -303,13 +321,20 @@ def classify_with_gemini(batches, cache, today):
                     continue
                 raise
 
+    dead = {}
+
     def run(batch):
+        if dead:
+            return []
         lines = [
             f"{n}. {t} | {d[:160] or '-'} | {ch or '-'} | live: {'yes' if lv else 'no'}"
             for n, (k, t, d, ch, lv) in enumerate(batch)
         ]
         try:
             response = ask(lines)
+        except ModelUnavailable as e:
+            dead["why"] = str(e)
+            return []
         except Exception as e:
             log(f"  batch of {len(batch)} not classified ({e}); left for next run")
             return []
@@ -340,6 +365,8 @@ def classify_with_gemini(batches, cache, today):
             if done % 10 == 0:
                 log(f"  {done}/{len(batches)} batches")
     log(f"model: {usage['in']} input, {usage['out']} output and {usage['think']} thinking tokens")
+    if dead:
+        raise ModelUnavailable(dead["why"])
 
 
 # Keyword rules for when there is no API key: a live mark plus a word that names an event.
@@ -368,7 +395,7 @@ MAINSTREAM = re.compile(r"\b(nfl|nba|mlb|nhl|wnba|pga tour)\b|college football|c
 
 def classify_with_rules(items, cache, today):
     for k, t, d, ch, lv in items:
-        verdict = {"e": False, "seen": today}
+        verdict = {"e": False, "seen": today, "rule": True}
         if lv and not NOT_EVENTS.search(t) and not SOCCER.search(t + " " + d):
             for kind, pat in EVENT_WORDS:
                 if re.search(pat, t, re.I):
@@ -416,8 +443,8 @@ def main():
     else:
         provider = "rules"
     use_model = provider != "rules"
-    if not use_model:
-        # Rule verdicts are not kept: a later run with a key should classify those titles.
+    if use_model:
+        # Rule verdicts stand in only until a model run: the model classifies those titles again.
         cache = {k: v for k, v in cache.items() if not v.get("rule")}
 
     # One entry per distinct title + description; the live mark and channel of its first airing.
@@ -443,13 +470,20 @@ def main():
 
     if todo:
         batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
-        if provider == "gemini":
-            log(f"classifying {len(todo)} titles with Gemini (Vertex AI, ADC) in {len(batches)} batches")
-            classify_with_gemini(batches, cache, today)
-        elif provider == "claude":
-            log(f"classifying {len(todo)} titles with {MODEL} in {len(batches)} batches")
-            classify_with_claude(batches, cache, today)
-        else:
+        try:
+            if provider == "gemini":
+                via = "API key" if os.environ.get("GEMINI_API_KEY") else "Vertex AI, ADC"
+                log(f"classifying {len(todo)} titles with Gemini ({via}) in {len(batches)} batches")
+                classify_with_gemini(batches, cache, today)
+            elif provider == "claude":
+                log(f"classifying {len(todo)} titles with {MODEL} in {len(batches)} batches")
+                classify_with_claude(batches, cache, today)
+        except ModelUnavailable as e:
+            log(f"model unavailable ({e}); keyword rules for the rest")
+            print(f"::warning::{provider} unavailable, keyword rules used: {str(e)[:200]}")
+            provider = "rules"
+            classify_with_rules([v for v in todo if v[0] not in cache], cache, today)
+        if provider == "rules" and not use_model:
             log("no model credentials (GOOGLE_CLOUD_PROJECT + ADC, or ANTHROPIC_API_KEY): keyword rules")
             classify_with_rules(todo, cache, today)
     for k in distinct:

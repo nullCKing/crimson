@@ -11,7 +11,8 @@
 #                      (~/.config/gcloud/application_default_credentials.json), or of a service
 #                      account key with the Vertex AI User role
 #   TEST_PLAYLIST      optional: the M3U playlist link, so only its channels are considered
-# Without GCP_PROJECT, ANTHROPIC_API_KEY (Claude Haiku) is used if set, and keyword rules if not.
+# Without either, ANTHROPIC_API_KEY (Claude Haiku) is used if set, and keyword rules if not.
+# A model that refuses the key (no billing credit, 401/403) falls back to keyword rules at once.
 # Only titles not seen before, and only those marked live or naming an event, reach the model.
 #
 # The schedule runs only from the default branch (GitHub's rule); until this file is there, it

@@ -36,6 +36,20 @@ competition), without soccer, found by a cheap LLM reading the guide.
   event on several channels shows once. Japanese and Korean events appear only if the playlist has
   those channels; the Ganja playlist has none (its ids are US, UK, Canada, Australia, NZ and a few
   others).
+- **Gemini Flash-Lite is the default model; Claude Haiku is the second choice.** The user asked
+  for something cheaper than Haiku's $0.20 first pass. `find_events.py` uses Gemini when
+  `GEMINI_API_KEY` is set (an API key bound to a service account, restricted to the Gemini API),
+  or Vertex AI through Application Default Credentials when `GCP_PROJECT` and `GCP_ADC_JSON` are
+  set. It picks the newest `gemini-N-flash-lite` from the model list, with the same prompt,
+  Pydantic schema and low thinking level. Without either, it uses `ANTHROPIC_API_KEY`, and keyword
+  rules without that. `--prefilter` sends only titles marked live or naming an event (about a
+  seventh); the rest are settled as "not an event" without the model.
+- **A model that can't be used ends the model's part of the run at once.** Billing errors (402,
+  "prepayment credits are depleted"), a refused key (401/403) and permission errors are not
+  retried. The titles left are settled by keyword rules, and the job logs a warning. Only rate
+  limits and 5xx back off. Retrying the 402 like a rate limit made a run sit for minutes per
+  batch. Rule verdicts carry `rule`, and a model run drops them from the cache, so the first run
+  with a working key classifies those titles again.
 - **The schedule runs only from the default branch** (GitHub's rule). Until the workflow is on
   `master`, it runs on pushes to the working branch and by hand.
 
