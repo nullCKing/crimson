@@ -223,8 +223,18 @@ to_tab 4
 sleep 4
 shot sports
 say "## Sports > Extra"
-key DPAD_DOWN DPAD_UP        # onto the chips (All Sports has focus first)
-key DPAD_RIGHT DPAD_CENTER
+# Onto the Extra chip, steering by what has focus: up to the navigation bar, down to the chips,
+# then right until Extra.
+for i in $(seq 1 14); do
+  f=$(focused_text)
+  [ "$f" = "Extra" ] && break
+  case " ${TABS[*]} " in
+    *" $f "*) key DPAD_DOWN ;;
+    *) if [ "$f" = "All Sports" ]; then key DPAD_RIGHT; else key DPAD_UP; fi ;;
+  esac
+done
+shot extra-chip-focused
+key DPAD_CENTER
 sleep 6
 shot sports-extra
 key DPAD_DOWN

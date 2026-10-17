@@ -16,10 +16,17 @@ good at and what keyword rules are bad at.
        verdict cache. A day's new titles cost cents.
     4. Write events.json.gz (what the app downloads) and the updated cache.
 
-Without ANTHROPIC_API_KEY it falls back to keyword rules, which find less and admit more noise,
-so the pipeline and the app can be exercised before a key exists.
+The model is Gemini on Google Cloud's Vertex AI, authenticated with Application Default
+Credentials (ADC: `gcloud auth application-default login`, or GOOGLE_APPLICATION_CREDENTIALS
+pointing at a credentials file) and GOOGLE_CLOUD_PROJECT. The newest Flash-Lite model the project
+can use is picked (GEMINI_MODEL overrides). Claude Haiku is used instead when only
+ANTHROPIC_API_KEY is set. With neither, keyword rules stand in, which find less and admit more
+noise, so the pipeline and the app can be exercised before any credentials exist.
 
-    python find_events.py --guide https://.../epg6.xml.gz --out events.json.gz --cache cache.json.gz
+Only titles the guide marks live or that name an event (--prefilter, on in the workflow) go to the
+model: about a seventh of them on EPGenius's guide.
+
+    GOOGLE_CLOUD_PROJECT=my-project python find_events.py --guide https://.../epg6.xml.gz --prefilter
 """
 
 import argparse
@@ -37,6 +44,9 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 MODEL = "claude-haiku-5-5"
+# Used if the project's model list cannot be read; the default in Google's own ADC setup script.
+GEMINI_FALLBACK = "gemini-3.8-flash"
+GEMINI_LOCATION = "global"
 # Claude Haiku 5.5, per million tokens, prompts up to 100K tokens (for the cost line in the log).
 PRICE_IN, PRICE_OUT = 0.10, 0.50
 BATCH = 120
@@ -217,6 +227,121 @@ def classify_with_claude(batches, cache, today):
     log(f"model: {usage['in']} input + {usage['out']} output tokens, about ${cost:.3f}")
 
 
+def pick_gemini_model(client):
+    """The newest gemini-N-flash-lite the project can use, else the newest gemini-N-flash."""
+    override = os.environ.get("GEMINI_MODEL")
+    if override:
+        return override
+    try:
+        config = {"page_size": 200}
+        if not os.environ.get("GEMINI_API_KEY"):
+            config["query_base"] = True  # Vertex AI: Google's own models, not the project's tuned ones
+        names = [m.name.rsplit("/", 1)[-1] for m in client.models.list(config=config)]
+    except Exception as e:
+        log(f"could not list models ({e}); using {GEMINI_FALLBACK}")
+        return GEMINI_FALLBACK
+
+    def newest(pattern):
+        found = [n for n in names if re.fullmatch(pattern, n)]
+        return max(found, key=lambda n: [int(x) for x in re.findall(r"\d+", n)], default=None)
+
+    return newest(r"gemini-\d+(\.\d+)?-flash-lite") or newest(r"gemini-\d+(\.\d+)?-flash") or GEMINI_FALLBACK
+
+
+def classify_with_gemini(batches, cache, today):
+    """The same question and answer shape as Claude's, asked of Gemini on Vertex AI through ADC."""
+    from google import genai
+    from google.genai import types
+    from pydantic import BaseModel
+
+    class Found(BaseModel):
+        i: int
+        kind: str
+        headline: str
+        mainstream: bool
+
+    class Result(BaseModel):
+        events: list[Found]
+
+    if os.environ.get("GEMINI_API_KEY"):
+        # A Gemini API key (an API key bound to a service account, restricted to the Gemini API).
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    else:
+        client = genai.Client(
+            vertexai=True,
+            project=os.environ["GOOGLE_CLOUD_PROJECT"],
+            location=os.environ.get("GOOGLE_CLOUD_LOCATION", GEMINI_LOCATION),
+        )
+    model = pick_gemini_model(client)
+    log(f"Gemini model: {model}")
+    usage = {"in": 0, "out": 0, "think": 0}
+    thinking = {"on": True}
+
+    def ask(lines):
+        config = dict(
+            system_instruction=SYSTEM,
+            response_mime_type="application/json",
+            response_schema=Result,
+            max_output_tokens=8000,
+            temperature=0,
+        )
+        for attempt in range(6):
+            if thinking["on"]:
+                config["thinking_config"] = types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW)
+            else:
+                config.pop("thinking_config", None)
+            try:
+                return client.models.generate_content(
+                    model=model, contents="\n".join(lines), config=types.GenerateContentConfig(**config))
+            except Exception as e:
+                text = str(e)
+                if thinking["on"] and "thinking" in text.lower() and ("400" in text or "INVALID_ARGUMENT" in text):
+                    thinking["on"] = False  # a model without thinking levels: ask without one
+                    continue
+                if any(code in text for code in ("429", "RESOURCE_EXHAUSTED", "500", "503", "UNAVAILABLE")) and attempt < 5:
+                    time.sleep(2 ** attempt * 5)
+                    continue
+                raise
+
+    def run(batch):
+        lines = [
+            f"{n}. {t} | {d[:160] or '-'} | {ch or '-'} | live: {'yes' if lv else 'no'}"
+            for n, (k, t, d, ch, lv) in enumerate(batch)
+        ]
+        try:
+            response = ask(lines)
+        except Exception as e:
+            log(f"  batch of {len(batch)} not classified ({e}); left for next run")
+            return []
+        meta = response.usage_metadata
+        if meta:
+            usage["in"] += meta.prompt_token_count or 0
+            usage["out"] += meta.candidates_token_count or 0
+            usage["think"] += meta.thoughts_token_count or 0
+        parsed = response.parsed
+        if parsed is None:
+            if len(batch) > 1:  # cut off or unreadable: try the halves
+                half = len(batch) // 2
+                return run(batch[:half]) + run(batch[half:])
+            return []
+        found = {f.i: f for f in parsed.events if 0 <= f.i < len(batch)}
+        return [
+            (k, {"e": True, "k": found[n].kind.strip()[:40], "h": found[n].headline.strip()[:100],
+                 "m": found[n].mainstream, "seen": today} if n in found else {"e": False, "seen": today})
+            for n, (k, t, d, ch, lv) in enumerate(batch)
+        ]
+
+    done = 0
+    with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
+        for result in pool.map(run, batches):
+            for k, verdict in result:
+                cache[k] = verdict
+            done += 1
+            if done % 10 == 0:
+                log(f"  {done}/{len(batches)} batches")
+    log(f"model: {usage['in']} input, {usage['out']} output and {usage['think']} thinking tokens")
+
+
 # Keyword rules for when there is no API key: a live mark plus a word that names an event.
 EVENT_WORDS = [
     ("Pro Wrestling", r"wrestl|\bwwe\b|\baew\b|\bnwa\b|\bimpact\b|\btna\b|\bring of honor\b"),
@@ -234,6 +359,10 @@ EVENT_WORDS = [
 NOT_EVENTS = re.compile(r"news|weather|today|tonight|morning|countdown|pregame|post ?game|postgame|preview|review|highlight|"
                         r"classic|greatest|rewind|replay|podcast|show\b|center\b|central\b|zone\b|huddle|kickoff|report|magazine|"
                         r"scoreboard|extra\b|final score|round ?up|wrap", re.I)
+# What --prefilter sends to the model besides titles marked live: anything naming an event.
+LIKELY_EVENT = re.compile("|".join(p for _, p in EVENT_WORDS[:-1]) +
+                          r"|championship|tournament|\bcup\b|\bopen\b|\bfinals?\b|\bgames\b|\bmeet\b|\bvs\.?\b|\bv\.? |\bat\b|"
+                          r"contest|festival|parade|derby|league|series|round|race|match|bout|trials|showdown|classic|invitational|bowl\b", re.I)
 MAINSTREAM = re.compile(r"\b(nfl|nba|mlb|nhl|wnba|pga tour)\b|college football|college basketball|ncaa (football|basketball)", re.I)
 
 
@@ -258,7 +387,9 @@ def main():
     ap.add_argument("--out", default="events.json.gz")
     ap.add_argument("--cache", default="cache.json.gz", help="verdict cache, read and rewritten")
     ap.add_argument("--hours", type=int, default=72)
-    ap.add_argument("--rules", action="store_true", help="keyword rules even with an API key")
+    ap.add_argument("--rules", action="store_true", help="keyword rules even with credentials")
+    ap.add_argument("--prefilter", action="store_true",
+                    help="send the model only titles marked live or naming an event (about a seventh)")
     args = ap.parse_args()
 
     now_ms = int(time.time() * 1000)
@@ -276,7 +407,15 @@ def main():
             cache = json.load(gzip.open(args.cache, "rt", encoding="utf-8"))
         except Exception as e:  # a damaged cache only costs a re-classification
             log(f"cache unreadable ({e}); starting empty")
-    use_model = bool(os.environ.get("ANTHROPIC_API_KEY")) and not args.rules
+    if args.rules:
+        provider = "rules"
+    elif os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        provider = "gemini"
+    elif os.environ.get("ANTHROPIC_API_KEY"):
+        provider = "claude"
+    else:
+        provider = "rules"
+    use_model = provider != "rules"
     if not use_model:
         # Rule verdicts are not kept: a later run with a key should classify those titles.
         cache = {k: v for k, v in cache.items() if not v.get("rule")}
@@ -291,14 +430,27 @@ def main():
             distinct[k] = distinct[k][:4] + (True,)
     todo = [v for k, v in distinct.items() if k not in cache]
     log(f"{len(distinct)} distinct titles, {len(todo)} not seen before")
+    if args.prefilter and use_model:
+        # The rest are settled without the model, and cached like any other verdict.
+        keep = []
+        for v in todo:
+            if v[4] or LIKELY_EVENT.search(v[1]):
+                keep.append(v)
+            else:
+                cache[v[0]] = {"e": False, "seen": today}
+        log(f"prefilter: {len(keep)} of {len(todo)} go to the model")
+        todo = keep
 
     if todo:
-        if use_model:
-            batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
+        batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
+        if provider == "gemini":
+            log(f"classifying {len(todo)} titles with Gemini (Vertex AI, ADC) in {len(batches)} batches")
+            classify_with_gemini(batches, cache, today)
+        elif provider == "claude":
             log(f"classifying {len(todo)} titles with {MODEL} in {len(batches)} batches")
             classify_with_claude(batches, cache, today)
         else:
-            log("no ANTHROPIC_API_KEY: keyword rules")
+            log("no model credentials (GOOGLE_CLOUD_PROJECT + ADC, or ANTHROPIC_API_KEY): keyword rules")
             classify_with_rules(todo, cache, today)
     for k in distinct:
         if k in cache:
@@ -320,7 +472,7 @@ def main():
     log(f"{len(events)} event airings; kinds: " + ", ".join(f"{k} {n}" for k, n in sorted(kinds.items(), key=lambda x: -x[1])[:25]))
 
     with gzip.open(args.out, "wt", encoding="utf-8") as f:
-        json.dump({"generated": now_ms, "model": MODEL if use_model else "rules", "hours": args.hours, "events": events},
+        json.dump({"generated": now_ms, "model": provider, "hours": args.hours, "events": events},
                   f, ensure_ascii=False, separators=(",", ":"))
 
     cutoff = (datetime.date.today() - datetime.timedelta(days=CACHE_DAYS)).isoformat()

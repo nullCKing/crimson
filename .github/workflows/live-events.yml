@@ -2,10 +2,17 @@
 # (tools/events/find_events.py) and publishes them as the `events` release's events.json.gz,
 # which the app downloads.
 #
-# Repository secrets:
-#   ANTHROPIC_API_KEY  Claude Haiku classifies the guide's titles (cents a day; only titles not
-#                      seen before are sent). Without it, keyword rules stand in.
-#   TEST_PLAYLIST      optional: the M3U playlist link, so only its channels are considered.
+# Gemini classifies the guide's titles. Repository secrets, either:
+#   GEMINI_API_KEY     a Gemini API key (an API key bound to a service account, restricted to the
+#                      Gemini API, from the Cloud console's Credentials page)
+# or, for Vertex AI with Application Default Credentials:
+#   GCP_PROJECT        the Google Cloud project ID
+#   GCP_ADC_JSON       the contents of the ADC file Google's setup script writes
+#                      (~/.config/gcloud/application_default_credentials.json), or of a service
+#                      account key with the Vertex AI User role
+#   TEST_PLAYLIST      optional: the M3U playlist link, so only its channels are considered
+# Without GCP_PROJECT, ANTHROPIC_API_KEY (Claude Haiku) is used if set, and keyword rules if not.
+# Only titles not seen before, and only those marked live or naming an event, reach the model.
 #
 # The schedule runs only from the default branch (GitHub's rule); until this file is there, it
 # runs on pushes to the working branch and by hand.
@@ -42,8 +49,23 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install the Anthropic SDK
-        run: pip install --quiet anthropic pydantic
+      - name: Install the model SDKs
+        run: pip install --quiet google-genai anthropic pydantic
+
+      - name: Application Default Credentials
+        env:
+          GCP_ADC_JSON: ${{ secrets.GCP_ADC_JSON }}
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+        run: |
+          if [ -n "$GCP_ADC_JSON" ] && [ -n "$GCP_PROJECT" ]; then
+            printf '%s' "$GCP_ADC_JSON" > "$RUNNER_TEMP/adc.json"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/adc.json" >> "$GITHUB_ENV"
+            echo "GOOGLE_CLOUD_PROJECT=$GCP_PROJECT" >> "$GITHUB_ENV"
+            echo "GOOGLE_CLOUD_LOCATION=global" >> "$GITHUB_ENV"
+            echo "Gemini via ADC for project set"
+          else
+            echo "GCP_PROJECT / GCP_ADC_JSON not set: no Gemini"
+          fi
 
       - name: Last run's verdicts
         env:
@@ -52,11 +74,16 @@ jobs:
 
       - name: Find the events
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PLAYLIST: ${{ secrets.TEST_PLAYLIST }}
         run: |
           args=(); [ -n "$PLAYLIST" ] && args=(--playlist "$PLAYLIST")
-          python tools/events/find_events.py --guide "$GUIDE" "${args[@]}" --out events.json.gz --cache cache.json.gz
+          python tools/events/find_events.py --guide "$GUIDE" "${args[@]}" --prefilter --out events.json.gz --cache cache.json.gz
+
+      - name: Remove the credentials file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/adc.json"
 
       - name: Publish
         env:
