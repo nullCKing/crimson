@@ -1,0 +1,1 @@
+Welcome to Crimson | Each profile is its own Xtream account, with its own channels, library, list and history. | Choose a picture | PROFILE NAME | Chris | SERVER URL | http://provider.example:8080 | USERNAME | PASSWORD | M3U PLAYLIST URL (OPTIONAL) | Live channels from a playlist | GUIDE (EPG) URL (OPTIONAL) | XMLTV, read first | Save
